@@ -1,0 +1,35 @@
+<svg width="800" height="450" viewBox="0 0 800 450" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-cases" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FAF5FF"/>
+      <stop offset="50%" stop-color="#E9D5FF"/>
+      <stop offset="100%" stop-color="#FDF4FF"/>
+    </linearGradient>
+    <linearGradient id="card-cases" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#FAF5FF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#bg-cases)"/>
+
+  <circle cx="650" cy="120" r="220" fill="#A855F7" opacity="0.2" filter="blur(50px)"/>
+  <circle cx="150" cy="330" r="180" fill="#7C3AED" opacity="0.15" filter="blur(50px)"/>
+
+  <rect x="220" y="70" width="360" height="290" rx="24" fill="url(#card-cases)" stroke="#C084FC" stroke-width="2.5"/>
+
+  <!-- Document / Analysis Case Study Graphic -->
+  <g transform="translate(360, 115)">
+    <rect x="0" y="0" width="80" height="90" rx="12" fill="#9333EA"/>
+    <line x1="18" y1="25" x2="62" y2="25" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+    <line x1="18" y1="45" x2="62" y2="45" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+    <line x1="18" y1="65" x2="42" y2="65" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <text x="400" y="315" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="22" fill="#581C87">
+    IN-DEPTH CASE STUDIES
+  </text>
+  <text x="400" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="14" fill="#7E22CE">
+    Market Turnarounds • Business Failures &amp; Wins
+  </text>
+</svg>
