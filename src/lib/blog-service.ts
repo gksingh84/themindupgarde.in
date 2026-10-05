@@ -5,26 +5,57 @@ import initialBlogs from '@/data/blogs.json';
 import { prisma } from '@/lib/prisma';
 
 const DATA_FILE = path.join(process.cwd(), 'src/data/blogs.json');
+const TMP_DATA_FILE = path.join('/tmp', 'blogs.json');
+
+let memoryBlogsCache: BlogPost[] | null = null;
 
 /**
- * Reads blogs synchronously from blogs.json fallback.
+ * Reads blogs synchronously with Vercel /tmp and memory fallback support.
  */
 export function getBlogsServer(): BlogPost[] {
+  if (memoryBlogsCache && memoryBlogsCache.length > 0) {
+    return memoryBlogsCache;
+  }
+
+  // Check /tmp fallback (on Vercel read-only filesystem)
+  try {
+    if (fs.existsSync(TMP_DATA_FILE)) {
+      const fileData = fs.readFileSync(TMP_DATA_FILE, 'utf-8');
+      const parsed = JSON.parse(fileData);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        memoryBlogsCache = parsed;
+        return memoryBlogsCache!;
+      }
+    }
+  } catch (err) {
+    console.error('Error reading /tmp/blogs.json:', err);
+  }
+
+  // Check src/data/blogs.json
   try {
     if (fs.existsSync(DATA_FILE)) {
       const fileData = fs.readFileSync(DATA_FILE, 'utf-8');
-      return JSON.parse(fileData);
+      const parsed = JSON.parse(fileData);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        memoryBlogsCache = parsed;
+        return memoryBlogsCache!;
+      }
     }
   } catch (error) {
     console.error('Error reading blogs.json:', error);
   }
-  return initialBlogs as BlogPost[];
+
+  memoryBlogsCache = initialBlogs as BlogPost[];
+  return memoryBlogsCache;
 }
 
 /**
- * Saves blogs synchronously to blogs.json fallback.
+ * Saves blogs synchronously with Vercel /tmp fallback support.
  */
 export function saveBlogsServer(blogs: BlogPost[]): boolean {
+  memoryBlogsCache = blogs;
+
+  // 1. Try saving to src/data/blogs.json (local dev environment)
   try {
     const dir = path.dirname(DATA_FILE);
     if (!fs.existsSync(dir)) {
@@ -33,7 +64,19 @@ export function saveBlogsServer(blogs: BlogPost[]): boolean {
     fs.writeFileSync(DATA_FILE, JSON.stringify(blogs, null, 2), 'utf-8');
     return true;
   } catch (error) {
-    console.error('Error saving blogs.json:', error);
+    console.warn('Notice: Primary blogs.json read-only or unwritable (Vercel environment). Using /tmp storage:', error);
+  }
+
+  // 2. Fallback to /tmp/blogs.json (Vercel serverless environment)
+  try {
+    const tmpDir = path.dirname(TMP_DATA_FILE);
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+    fs.writeFileSync(TMP_DATA_FILE, JSON.stringify(blogs, null, 2), 'utf-8');
+    return true;
+  } catch (tmpError) {
+    console.error('Error saving to /tmp/blogs.json:', tmpError);
     return false;
   }
 }
@@ -47,7 +90,7 @@ export function getBlogBySlugServer(slug: string): BlogPost | undefined {
 }
 
 /**
- * Async PostgreSQL Prisma query with JSON file fallback.
+ * Async PostgreSQL Prisma query with JSON file / memory fallback.
  */
 export async function getBlogsDb(): Promise<BlogPost[]> {
   try {
@@ -81,17 +124,17 @@ export async function getBlogsDb(): Promise<BlogPost[]> {
       }
     }
   } catch (error) {
-    console.warn('PostgreSQL query notice (falling back to JSON store):', error);
+    console.warn('PostgreSQL query notice (falling back to local store):', error);
   }
 
   return getBlogsServer();
 }
 
 /**
- * Async PostgreSQL blog creation / upsert with JSON file sync.
+ * Async PostgreSQL blog creation / upsert with local store sync.
  */
 export async function createOrUpdateBlogDb(blog: BlogPost): Promise<BlogPost> {
-  // Always update JSON fallback
+  // Always update local store
   const existing = getBlogsServer();
   const idx = existing.findIndex((b) => b.id === blog.id || b.slug === blog.slug);
   if (idx > -1) {

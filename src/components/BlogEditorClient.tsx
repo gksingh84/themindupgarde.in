@@ -77,7 +77,18 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
   });
 
   useEffect(() => {
-    setIsAuthenticated(ClientStorage.isAdminAuthenticated());
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/verify');
+        if (res.ok) {
+          setIsAuthenticated(true);
+          ClientStorage.setAdminAuthenticated(true);
+          return;
+        }
+      } catch {}
+      setIsAuthenticated(ClientStorage.isAdminAuthenticated());
+    }
+    checkAuth();
   }, []);
 
   // Auto-generate slug from title if creating new
@@ -143,7 +154,9 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
     showToast('Author photo removed', 'info');
   };
 
-  const handleSave = async (targetStatus?: 'published' | 'draft') => {
+  const handleSave = async (targetStatus?: 'published' | 'draft', e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+
     if (!title.trim()) {
       showToast('Please provide an article title', 'error');
       return;
@@ -256,7 +269,8 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => handleSave('draft')}
+            type="button"
+            onClick={(e) => handleSave('draft', e)}
             disabled={saving}
             className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors shadow-xs"
           >
@@ -265,7 +279,8 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
           </button>
 
           <button
-            onClick={() => handleSave('published')}
+            type="button"
+            onClick={(e) => handleSave('published', e)}
             disabled={saving}
             className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
           >
