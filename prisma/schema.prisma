@@ -1,0 +1,50 @@
+// Prisma Schema for The Mind Upgrade PostgreSQL Database
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model BlogPost {
+  id           String    @id @default(uuid())
+  slug         String    @unique
+  title        String
+  excerpt      String
+  content      String    @db.Text
+  coverImage   String
+  category     String
+  tags         String[]
+  authorName   String
+  authorAvatar String
+  authorRole   String
+  publishedAt  String
+  readTime     String
+  status       String    @default("published")
+  featured     Boolean   @default(false)
+  views        Int       @default(0)
+  likes        Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  comments     Comment[]
+
+  @@map("blogs")
+}
+
+model Comment {
+  id           String    @id @default(uuid())
+  postSlug     String
+  blog         BlogPost? @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+  authorName   String
+  authorEmail  String?
+  authorAvatar String
+  content      String    @db.Text
+  createdAt    String
+  likes        Int       @default(0)
+
+  @@map("comments")
+}

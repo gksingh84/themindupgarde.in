@@ -1,0 +1,107 @@
+[
+  {
+    "id": "sub_1",
+    "email": "gaurav.kumar@example.com",
+    "name": "Gaurav Kumar Singh",
+    "subscribedAt": "04-10-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_2",
+    "email": "priya.sharma@example.com",
+    "name": "Priya Sharma",
+    "subscribedAt": "03-10-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_3",
+    "email": "aarav.patel@example.com",
+    "name": "Aarav Patel",
+    "subscribedAt": "02-10-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_4",
+    "email": "rohan.mehta@example.com",
+    "name": "Rohan Mehta",
+    "subscribedAt": "01-10-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_5",
+    "email": "ananya.verma@example.com",
+    "name": "Ananya Verma",
+    "subscribedAt": "29-09-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_6",
+    "email": "vikram.singh@example.com",
+    "name": "Vikram Singh",
+    "subscribedAt": "28-09-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_7",
+    "email": "sneha.reddy@example.com",
+    "name": "Sneha Reddy",
+    "subscribedAt": "27-09-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_8",
+    "email": "aditya.joshi@example.com",
+    "name": "Aditya Joshi",
+    "subscribedAt": "25-09-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_9",
+    "email": "kavya.nair@example.com",
+    "name": "Kavya Nair",
+    "subscribedAt": "24-09-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_10",
+    "email": "rahul.gupta@example.com",
+    "name": "Rahul Gupta",
+    "subscribedAt": "22-09-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_11",
+    "email": "divya.iyer@example.com",
+    "name": "Divya Iyer",
+    "subscribedAt": "20-09-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_12",
+    "email": "manish.chawla@example.com",
+    "name": "Manish Chawla",
+    "subscribedAt": "18-09-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_13",
+    "email": "pooja.deshmukh@example.com",
+    "name": "Pooja Deshmukh",
+    "subscribedAt": "15-09-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_14",
+    "email": "amitav.roy@example.com",
+    "name": "Amitav Roy",
+    "subscribedAt": "12-09-2026",
+    "status": "active"
+  },
+  {
+    "id": "sub_15",
+    "email": "ritika.kapoor@example.com",
+    "name": "Ritika Kapoor",
+    "subscribedAt": "10-09-2026",
+    "status": "active"
+  }
+]

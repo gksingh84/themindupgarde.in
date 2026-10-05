@@ -1,0 +1,97 @@
+<svg width="600" height="600" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Canopy Leaf Gradients -->
+    <linearGradient id="leaf-left" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E11D48" />
+      <stop offset="50%" stop-color="#DB2777" />
+      <stop offset="100%" stop-color="#9333EA" />
+    </linearGradient>
+    <linearGradient id="leaf-mid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7C3AED" />
+      <stop offset="50%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+    <linearGradient id="leaf-right" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06B6D4" />
+      <stop offset="50%" stop-color="#0D9488" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    
+    <!-- Body Gradient -->
+    <linearGradient id="body-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1B4B" />
+      <stop offset="50%" stop-color="#312E81" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+    <linearGradient id="sash-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E11D48" />
+      <stop offset="50%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+  </defs>
+
+  <!-- TREE OF KNOWLEDGE CANOPY (Symmetrical Colorful Leaf Crown) -->
+  <g transform="translate(300, 210)">
+    <!-- Tree Trunk / Mind Connection Branches -->
+    <path d="M 0,20 Q -20,-30 -50,-60 M 0,20 Q 20,-30 50,-60 M 0,10 Q -40,-20 -90,-40 M 0,10 Q 40,-20 90,-40 M 0,0 Q -60,-10 -110,0 M 0,0 Q 60,-10 110,0" stroke="#1E1B4B" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+
+    <!-- Left Canopy Leaves (Red / Pink / Magenta) -->
+    <g fill="url(#leaf-left)">
+      <path d="M -110,-10 C -125,-25 -125,-40 -110,-45 C -95,-40 -95,-25 -110,-10 Z" />
+      <path d="M -90,-45 C -105,-60 -105,-75 -90,-80 C -75,-75 -75,-60 -90,-45 Z" />
+      <path d="M -125,-45 C -140,-60 -140,-75 -125,-80 C -110,-75 -110,-60 -125,-45 Z" />
+      <path d="M -70,-75 C -85,-90 -85,-105 -70,-110 C -55,-105 -55,-90 -70,-75 Z" />
+      <path d="M -105,-80 C -120,-95 -120,-110 -105,-115 C -90,-110 -90,-95 -105,-80 Z" />
+      <path d="M -135,-80 C -150,-95 -150,-110 -135,-115 C -120,-110 -120,-95 -135,-80 Z" />
+      <path d="M -50,-105 C -65,-120 -65,-135 -50,-140 C -35,-135 -35,-120 -50,-105 Z" />
+      <path d="M -80,-115 C -95,-130 -95,-145 -80,-150 C -65,-145 -65,-130 -80,-115 Z" />
+      <path d="M -115,-115 C -130,-130 -130,-145 -115,-150 C -100,-145 -100,-130 -115,-115 Z" />
+    </g>
+
+    <!-- Center/Top Canopy Leaves (Purple / Indigo / Violet) -->
+    <g fill="url(#leaf-mid)">
+      <path d="M -25,-130 C -35,-150 -30,-165 -15,-165 C 0,-160 -10,-140 -25,-130 Z" />
+      <path d="M 0,-140 C -10,-160 0,-175 15,-170 C 20,-155 10,-145 0,-140 Z" />
+      <path d="M 25,-130 C 10,-140 0,-160 15,-165 C 30,-165 35,-150 25,-130 Z" />
+      <path d="M -40,-135 C -55,-150 -55,-165 -40,-170 C -25,-165 -25,-150 -40,-135 Z" />
+      <path d="M 40,-135 C 25,-150 25,-165 40,-170 C 55,-165 55,-150 40,-135 Z" />
+      <path d="M 0,-100 C -12,-115 -12,-130 0,-135 C 12,-130 12,-115 0,-100 Z" />
+      <path d="M -25,-95 C -37,-110 -37,-125 -25,-130 C -13,-125 -13,-110 -25,-95 Z" />
+      <path d="M 25,-95 C 13,-110 13,-125 25,-130 C 37,-125 37,-110 25,-95 Z" />
+    </g>
+
+    <!-- Right Canopy Leaves (Teal / Cyan / Emerald) -->
+    <g fill="url(#leaf-right)">
+      <path d="M 110,-10 C 95,-25 95,-40 110,-45 C 125,-40 125,-25 110,-10 Z" />
+      <path d="M 90,-45 C 75,-60 75,-75 90,-80 C 105,-75 105,-60 90,-45 Z" />
+      <path d="M 125,-45 C 110,-60 110,-75 125,-80 C 140,-75 140,-60 125,-45 Z" />
+      <path d="M 70,-75 C 55,-90 55,-105 70,-110 C 85,-105 85,-90 70,-75 Z" />
+      <path d="M 105,-80 C 90,-95 90,-110 105,-115 C 120,-110 120,-95 105,-80 Z" />
+      <path d="M 135,-80 C 120,-95 120,-110 135,-115 C 150,-110 150,-95 135,-80 Z" />
+      <path d="M 50,-105 C 35,-120 35,-135 50,-140 C 65,-135 65,-120 50,-105 Z" />
+      <path d="M 80,-115 C 65,-130 65,-145 80,-150 C 95,-145 95,-130 80,-115 Z" />
+      <path d="M 115,-115 C 100,-130 100,-145 115,-150 C 130,-145 130,-130 115,-115 Z" />
+    </g>
+  </g>
+
+  <!-- MEDITATING FIGURE (Yogi Lotus Silhouette) -->
+  <g transform="translate(300, 260)">
+    <!-- Head -->
+    <ellipse cx="0" cy="-35" rx="16" ry="22" fill="url(#body-grad)"/>
+
+    <!-- Neck & Torso -->
+    <path d="M -12,-15 C -25,0 -45,20 -70,35 C -85,45 -95,50 -75,55 C -55,60 -35,40 -20,20 L -20,70 L 20,70 L 20,20 C 35,40 55,60 75,55 C 95,50 85,45 70,35 C 45,20 25,0 12,-15 Z" fill="url(#body-grad)"/>
+
+    <!-- Arms & Gyan Mudra Hands -->
+    <path d="M -25,-5 Q -60,25 -80,45 C -90,55 -95,48 -85,40 C -75,32 -45,10 -20,-10 Z" fill="url(#body-grad)"/>
+    <path d="M 25,-5 Q 60,25 80,45 C 90,55 95,48 85,40 C 75,32 45,10 20,-10 Z" fill="url(#body-grad)"/>
+    
+    <!-- Crossed Legs Padmasana Base -->
+    <path d="M -85,45 C -70,75 -30,80 0,80 C 30,80 70,75 85,45 C 95,65 75,90 0,92 C -75,90 -95,65 -85,45 Z" fill="url(#body-grad)"/>
+
+    <!-- Diagonal Vibrant Sash Stripes on Robe -->
+    <path d="M -20,10 Q 0,35 25,50" stroke="url(#sash-grad)" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M -15,30 Q 5,50 35,65" stroke="url(#sash-grad)" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M -10,50 Q 10,65 40,75" stroke="url(#sash-grad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>

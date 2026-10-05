@@ -1,0 +1,35 @@
+<svg width="800" height="450" viewBox="0 0 800 450" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-stoic" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F0F9FF"/>
+      <stop offset="50%" stop-color="#E0F2FE"/>
+      <stop offset="100%" stop-color="#EFF6FF"/>
+    </linearGradient>
+    <linearGradient id="card-stoic" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F0F9FF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#bg-stoic)"/>
+
+  <circle cx="650" cy="120" r="220" fill="#0284C7" opacity="0.2" filter="blur(50px)"/>
+  <circle cx="150" cy="330" r="180" fill="#2563EB" opacity="0.15" filter="blur(50px)"/>
+
+  <rect x="220" y="70" width="360" height="290" rx="24" fill="url(#card-stoic)" stroke="#BAE6FD" stroke-width="2.5"/>
+
+  <g transform="translate(365, 120)">
+    <rect x="0" y="0" width="70" height="12" rx="4" fill="#0284C7"/>
+    <rect x="10" y="18" width="12" height="60" rx="3" fill="#0369A1"/>
+    <rect x="29" y="18" width="12" height="60" rx="3" fill="#0369A1"/>
+    <rect x="48" y="18" width="12" height="60" rx="3" fill="#0369A1"/>
+    <rect x="0" y="84" width="70" height="12" rx="4" fill="#0284C7"/>
+  </g>
+
+  <text x="400" y="315" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="22" fill="#0C4A6E">
+    STRATEGIC STOICISM
+  </text>
+  <text x="400" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="14" fill="#0284C7">
+    Dichotomy of Control • Calm in Chaos
+  </text>
+</svg>

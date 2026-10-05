@@ -1,0 +1,36 @@
+<svg width="800" height="450" viewBox="0 0 800 450" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-mental" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF3C7"/>
+      <stop offset="50%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#FEF9C3"/>
+    </linearGradient>
+    <linearGradient id="card-mental" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#FFFBEB"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#bg-mental)"/>
+
+  <circle cx="680" cy="100" r="200" fill="#F59E0B" opacity="0.2" filter="blur(50px)"/>
+  <circle cx="120" cy="360" r="180" fill="#D97706" opacity="0.15" filter="blur(50px)"/>
+
+  <rect x="220" y="70" width="360" height="290" rx="24" fill="url(#card-mental)" stroke="#FDE68A" stroke-width="2.5"/>
+
+  <g transform="translate(320, 110)">
+    <rect x="0" y="0" width="60" height="60" rx="14" fill="#F59E0B"/>
+    <rect x="75" y="0" width="60" height="60" rx="14" fill="#D97706"/>
+    <rect x="150" y="0" width="60" height="60" rx="14" fill="#7C3AED"/>
+    
+    <rect x="37" y="75" width="60" height="60" rx="14" fill="#0284C7"/>
+    <rect x="112" y="75" width="60" height="60" rx="14" fill="#059669"/>
+  </g>
+
+  <text x="400" y="315" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="22" fill="#78350F">
+    MENTAL MODELS 101
+  </text>
+  <text x="400" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="14" fill="#92400E">
+    First Principles • Inversion • 80/20 Rule
+  </text>
+</svg>

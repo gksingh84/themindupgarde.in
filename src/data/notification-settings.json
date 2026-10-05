@@ -1,0 +1,11 @@
+{
+  "adminEmail": "gauravcivil04@gmail.com",
+  "notifyOnComment": true,
+  "notifyOnLike": true,
+  "notifyOnSubscriber": true,
+  "smtpHost": "",
+  "smtpPort": 587,
+  "smtpUser": "",
+  "smtpPass": "PASSWORD@123456",
+  "senderName": "The Mind Upgrade Notifications"
+}
