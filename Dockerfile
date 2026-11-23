@@ -19,6 +19,7 @@ COPY . .
 # Generate Prisma Client & Run Webpack Production Build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npx prisma generate || true
 RUN npm run build
 
