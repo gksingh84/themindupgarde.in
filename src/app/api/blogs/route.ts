@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getBlogsServer, saveBlogsServer } from '@/lib/blog-service';
 import { BlogPost } from '@/types/blog';
-import { formatDateDDMMYYYY } from '@/lib/date-utils';
+import { formatDateDDMMYYYY, parseDate } from '@/lib/date-utils';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -67,7 +67,13 @@ export async function POST(request: Request) {
     }
     created.slug = slugCandidate;
 
-    blogs.unshift(created);
+    blogs.push(created);
+    // Sort all blogs chronologically by publication date descending
+    blogs.sort((a, b) => {
+      const dateB = parseDate(b.publishedAt).getTime();
+      const dateA = parseDate(a.publishedAt).getTime();
+      return dateB - dateA;
+    });
     saveBlogsServer(blogs);
 
     // If published, trigger subscriber email notifications

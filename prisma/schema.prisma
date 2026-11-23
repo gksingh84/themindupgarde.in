@@ -1,4 +1,5 @@
-// Prisma Schema for The Mind Upgrade PostgreSQL Database
+// Prisma Schema for The Mind Upgrade Enterprise Publishing Platform
+// Database: PostgreSQL
 
 datasource db {
   provider = "postgresql"
@@ -9,42 +10,269 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model BlogPost {
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  AUTHOR
+  CONTRIBUTOR
+}
+
+enum ArticleStatus {
+  DRAFT
+  IN_REVIEW
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  SPAM
+  REJECTED
+}
+
+enum SubscriberStatus {
+  ACTIVE
+  UNCONFIRMED
+  UNSUBSCRIBED
+}
+
+model User {
   id           String    @id @default(uuid())
-  slug         String    @unique
-  title        String
-  excerpt      String
-  content      String    @db.Text
-  coverImage   String
-  category     String
-  tags         String[]
-  authorName   String
-  authorAvatar String
-  authorRole   String
-  publishedAt  String
-  readTime     String
-  status       String    @default("published")
-  featured     Boolean   @default(false)
-  views        Int       @default(0)
-  likes        Int       @default(0)
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(AUTHOR)
+  avatar       String?
+  bio          String?   @db.Text
+  active       Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  comments     Comment[]
+  articles     BlogPost[]
+  revisions    ArticleRevision[]
+  auditLogs    AuditLog[]
 
+  @@map("users")
+}
+
+model BlogPost {
+  id             String         @id @default(uuid())
+  slug           String         @unique
+  title          String
+  subtitle       String?
+  excerpt        String         @db.Text
+  content        String         @db.Text
+  coverImage     String
+  coverCaption   String?
+  category       String
+  subcategory    String?
+  tags           String[]
+  authorId       String?
+  author         User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorName     String
+  authorAvatar   String
+  authorRole     String
+  publishedAt    String
+  updatedAtDate  DateTime?      @updatedAt
+  scheduledAt    DateTime?
+  readTime       String
+  status         String         @default("published")
+  featured       Boolean        @default(false)
+  editorsPick    Boolean        @default(false)
+  views          Int            @default(0)
+  likes          Int            @default(0)
+  metaTitle      String?
+  metaDescription String?       @db.Text
+  canonicalUrl   String?
+  ogImage        String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  comments       Comment[]
+  revisions      ArticleRevision[]
+  analyticsViews ArticleView[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([status])
+  @@index([featured])
+  @@index([editorsPick])
   @@map("blogs")
 }
 
-model Comment {
+model ArticleRevision {
   id           String    @id @default(uuid())
+  articleId    String
+  article      BlogPost  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  title        String
+  excerpt      String    @db.Text
+  content      String    @db.Text
+  authorId     String?
+  author       User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorName   String
+  revisionNote String?
+  createdAt    DateTime  @default(now())
+
+  @@index([articleId])
+  @@map("article_revisions")
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  slug        String     @unique
+  description String     @db.Text
+  image       String?
+  order       Int        @default(0)
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryHierarchy")
+  metaTitle   String?
+  metaDesc    String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("categories")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("tags")
+}
+
+model Comment {
+  id           String        @id @default(uuid())
   postSlug     String
-  blog         BlogPost? @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+  blog         BlogPost?     @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+  parentId     String?
+  parent       Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies      Comment[]     @relation("CommentReplies")
   authorName   String
   authorEmail  String?
   authorAvatar String
-  content      String    @db.Text
+  content      String        @db.Text
+  status       CommentStatus @default(APPROVED)
+  isAuthorReply Boolean      @default(false)
+  likes        Int           @default(0)
+  ipHash       String?
   createdAt    String
-  likes        Int       @default(0)
+  createdAtDate DateTime     @default(now())
 
+  @@index([postSlug])
+  @@index([status])
   @@map("comments")
+}
+
+model NewsletterSubscriber {
+  id           String           @id @default(uuid())
+  email        String           @unique
+  name         String?
+  status       SubscriberStatus @default(ACTIVE)
+  token        String?
+  confirmedAt  DateTime?
+  source       String?          @default("website_footer")
+  createdAt    DateTime         @default(now())
+
+  @@index([email])
+  @@index([status])
+  @@map("subscribers")
+}
+
+model ArticleView {
+  id        String    @id @default(uuid())
+  articleId String
+  article   BlogPost  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  ipHash    String?
+  userAgent String?
+  viewedAt  DateTime  @default(now())
+
+  @@index([articleId])
+  @@index([viewedAt])
+  @@map("article_views")
+}
+
+model StaticPage {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  content     String   @db.Text
+  metaTitle   String?
+  metaDesc    String?  @db.Text
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("static_pages")
+}
+
+model WebsiteSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String   @db.Text
+  group     String   @default("general")
+  updatedAt DateTime @updatedAt
+
+  @@map("website_settings")
+}
+
+model Redirect {
+  id         String   @id @default(uuid())
+  sourcePath String   @unique
+  targetPath String
+  statusCode Int      @default(301)
+  hits       Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@map("redirects")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userEmail String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model NotFoundLog {
+  id         String   @id @default(uuid())
+  path       String   @unique
+  referrer   String?
+  count      Int      @default(1)
+  lastSeenAt DateTime @default(now())
+
+  @@map("not_found_logs")
+}
+
+model MediaItem {
+  id           String   @id @default(uuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+  altText      String?
+  caption      String?
+  width        Int?
+  height       Int?
+  folder       String   @default("general")
+  createdAt    DateTime @default(now())
+
+  @@map("media_items")
 }

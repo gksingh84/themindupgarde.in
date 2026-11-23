@@ -4,36 +4,55 @@
 
 @layer base {
   :root {
-    --background: #f8fafc;
-    --foreground: #0f172a;
+    --background: #FAFAF7;
+    --foreground: #252B32;
+    --navy-primary: #14243A;
+    --slate-secondary: #405B78;
+    --amber-accent: #E5A64B;
+    --font-serif: 'Playfair Display', 'DM Serif Display', Georgia, Cambria, serif;
+    --font-sans: 'Inter', 'Manrope', system-ui, -apple-system, sans-serif;
   }
 
   .dark {
-    --background: #090d16;
-    --foreground: #f8fafc;
+    --background: #0E1724;
+    --foreground: #E2E8F0;
+    --navy-primary: #14243A;
+    --slate-secondary: #738BA7;
+    --amber-accent: #E5A64B;
   }
 
   * {
     box-sizing: border-box;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans);
     margin: 0;
     padding: 0;
-    line-height: 1.5;
+    line-height: 1.65;
     overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-space), 'Space Grotesk', 'Poppins', sans-serif;
-    margin: 0;
+    font-family: var(--font-serif);
+    letter-spacing: -0.015em;
+    color: inherit;
   }
+}
 
-  p {
-    margin: 0;
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -61,135 +80,402 @@
   margin-right: auto;
 }
 
-.stats-box {
-  width: 100%;
-  max-width: 920px;
+/* Editorial Reading Typography & Callouts */
+.prose-editorial {
+  max-width: 760px;
   margin-left: auto;
   margin-right: auto;
-}
-
-/* TipTap & Article HTML Content Styling */
-.prose-article {
-  max-width: 100%;
-  line-height: 1.8;
-}
-
-.prose-article h2 {
-  font-size: 1.75rem;
-  font-weight: 800;
-  margin-top: 2.5rem;
-  margin-bottom: 1.25rem;
-  letter-spacing: -0.02em;
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
+  line-height: 1.85;
   color: inherit;
 }
 
-.prose-article h3 {
+.prose-editorial h1 {
+  font-family: var(--font-serif);
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.25;
+}
+
+.prose-editorial h2 {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-top: 1.35rem;
+  margin-bottom: 0.65rem;
+  line-height: 1.3;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(115, 123, 133, 0.2);
+}
+
+.prose-editorial h3 {
+  font-family: var(--font-serif);
   font-size: 1.35rem;
   font-weight: 700;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  letter-spacing: -0.01em;
-  color: inherit;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.35;
 }
 
-.prose-article p {
-  margin-bottom: 1.5rem;
-  font-size: 1.05rem;
-  color: inherit;
+.prose-editorial h4 {
+  font-family: var(--font-sans);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
 }
 
-.prose-article ul {
-  list-style-type: disc;
-  padding-left: 1.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.prose-article ol {
-  list-style-type: decimal;
-  padding-left: 1.75rem;
+.prose-editorial p {
   margin-bottom: 1.5rem;
 }
 
-.prose-article li {
-  margin-bottom: 0.6rem;
+/* Editorial Lists & Sub-numbering */
+.prose-editorial ul,
+.ProseMirror ul,
+.prose ul {
+  list-style-type: disc !important;
+  padding-left: 1.75rem !important;
+  margin-top: 0.75rem !important;
+  margin-bottom: 1.5rem !important;
 }
 
-.prose-article blockquote {
-  border-left: 4px solid #6366f1;
-  padding: 1rem 1.25rem;
-  font-style: italic;
+.prose-editorial ul ul,
+.ProseMirror ul ul,
+.prose ul ul {
+  list-style-type: circle !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.35rem !important;
+  margin-bottom: 0.35rem !important;
+}
+
+.prose-editorial ul ul ul,
+.ProseMirror ul ul ul,
+.prose ul ul ul {
+  list-style-type: square !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/* Ordered Lists: Level 1 (1, 2, 3...) */
+.prose-editorial ol,
+.ProseMirror ol,
+.prose ol {
+  list-style-type: decimal !important;
+  padding-left: 1.75rem !important;
+  margin-top: 0.75rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+/* Sub-numbering Level 2: a., b., c., d... */
+.prose-editorial ol ol,
+.ProseMirror ol ol,
+.prose ol ol {
+  list-style-type: lower-alpha !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.35rem !important;
+  margin-bottom: 0.35rem !important;
+}
+
+/* Sub-numbering Level 3: i., ii., iii., iv... */
+.prose-editorial ol ol ol,
+.ProseMirror ol ol ol,
+.prose ol ol ol {
+  list-style-type: lower-roman !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.prose-editorial li,
+.ProseMirror li,
+.prose li {
+  margin-bottom: 0.45rem !important;
+  padding-left: 0.25rem;
+}
+
+/* Paragraph & Block Indentation Levels - 1 step per indent (1.5rem / 24px) */
+[data-indent="1"],
+.prose-editorial [data-indent="1"],
+.ProseMirror [data-indent="1"] {
+  margin-left: 1.5rem !important;
+}
+
+[data-indent="2"],
+.prose-editorial [data-indent="2"],
+.ProseMirror [data-indent="2"] {
+  margin-left: 3rem !important;
+}
+
+[data-indent="3"],
+.prose-editorial [data-indent="3"],
+.ProseMirror [data-indent="3"] {
+  margin-left: 4.5rem !important;
+}
+
+[data-indent="4"],
+.prose-editorial [data-indent="4"],
+.ProseMirror [data-indent="4"] {
+  margin-left: 6rem !important;
+}
+
+[data-indent="5"],
+.prose-editorial [data-indent="5"],
+.ProseMirror [data-indent="5"] {
+  margin-left: 7.5rem !important;
+}
+
+[data-indent="6"],
+.prose-editorial [data-indent="6"],
+.ProseMirror [data-indent="6"] {
+  margin-left: 9rem !important;
+}
+
+/* Editorial Blockquote (Amber Card) - rendered in reader AND TipTap editor */
+.prose-editorial blockquote,
+.ProseMirror blockquote {
+  border-left: 4.5px solid #E5A64B !important;
+  padding: 1.15rem 1.5rem !important;
+  font-family: var(--font-serif) !important;
+  font-size: 1.22rem !important;
+  font-style: italic !important;
+  line-height: 1.75 !important;
+  margin: 1.75rem 0 !important;
+  background-color: rgba(229, 166, 75, 0.08) !important;
+  border-radius: 0 0.85rem 0.85rem 0 !important;
+  color: inherit !important;
+}
+
+.dark .prose-editorial blockquote,
+.dark .ProseMirror blockquote {
+  background-color: rgba(229, 166, 75, 0.14) !important;
+  border-left-color: #E5A64B !important;
+}
+
+.prose-editorial blockquote p,
+.ProseMirror blockquote p {
+  margin-top: 0 !important;
+  margin-bottom: 0.5rem !important;
+  font-family: inherit !important;
+  font-style: italic !important;
+  font-size: inherit !important;
+}
+
+.prose-editorial blockquote p:last-child,
+.ProseMirror blockquote p:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Editorial Callout Cards (Tip, Warning, Key Insight) - rendered in reader AND TipTap editor */
+.prose-editorial .callout,
+.ProseMirror .callout {
+  padding: 1.15rem 1.5rem !important;
+  border-radius: 0.85rem !important;
+  margin: 1.75rem 0 !important;
+  border-left: 4.5px solid !important;
+  line-height: 1.75 !important;
+}
+
+.prose-editorial .callout p,
+.ProseMirror .callout p {
+  margin-top: 0 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.prose-editorial .callout p:last-child,
+.ProseMirror .callout p:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* 1. Green Pro Tip Card */
+.prose-editorial .callout-tip,
+.ProseMirror .callout-tip {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  border-left-color: #10B981 !important;
+}
+
+.dark .prose-editorial .callout-tip,
+.dark .ProseMirror .callout-tip {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  border-left-color: #10B981 !important;
+}
+
+/* 2. Amber/Orange Warning Card */
+.prose-editorial .callout-warning,
+.ProseMirror .callout-warning {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  border-left-color: #F59E0B !important;
+}
+
+.dark .prose-editorial .callout-warning,
+.dark .ProseMirror .callout-warning {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  border-left-color: #F59E0B !important;
+}
+
+/* 3. Deep Navy Key Insight Card */
+.prose-editorial .callout-key,
+.ProseMirror .callout-key {
+  background-color: rgba(20, 36, 58, 0.05) !important;
+  border-left-color: #14243A !important;
+}
+
+.dark .prose-editorial .callout-key,
+.dark .ProseMirror .callout-key {
+  background-color: rgba(64, 91, 120, 0.18) !important;
+  border-left-color: #E5A64B !important;
+}
+
+.prose-editorial table {
+  width: 100%;
+  border-collapse: collapse;
   margin: 2rem 0;
-  background-color: rgba(99, 102, 241, 0.08);
-  border-radius: 0 0.75rem 0.75rem 0;
+  font-size: 0.95rem;
 }
 
-.prose-article code {
-  background-color: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
-  font-size: 0.9em;
+.prose-editorial th,
+.prose-editorial td {
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(115, 123, 133, 0.2);
+  text-align: left;
+}
+
+.prose-editorial th {
+  background-color: rgba(64, 91, 120, 0.08);
+  font-weight: 700;
+}
+
+.prose-editorial code {
+  background-color: rgba(64, 91, 120, 0.12);
+  color: #14243A;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.35rem;
+  font-size: 0.88em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-.prose-article img {
-  border-radius: 1rem;
+.dark .prose-editorial code {
+  background-color: rgba(115, 139, 167, 0.2);
+  color: #E5A64B;
+}
+
+.prose-editorial img {
+  border-radius: 0.75rem;
   margin: 2rem 0;
   max-width: 100%;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.15);
 }
 
-.prose-article hr,
-.ProseMirror hr {
-  border: 0;
-  border-top: 1px solid #cbd5e1;
-  margin: 2.25rem 0;
+.prose-editorial figure {
+  margin: 2rem 0;
 }
 
-.dark .prose-article hr,
-.dark .ProseMirror hr {
-  border-top-color: #334155;
+.prose-editorial figcaption {
+  font-size: 0.85rem;
+  color: #737B85;
+  text-align: center;
+  margin-top: 0.5rem;
+  font-style: italic;
 }
 
+/* TipTap Editor Styling */
 .ProseMirror {
-  min-height: 280px;
-  padding: 1.25rem 1.5rem !important;
+  min-height: 100%;
+  padding: 1.5rem !important;
   outline: none !important;
   border: none !important;
-  box-shadow: none !important;
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  line-height: 1.8;
 }
 
-.ProseMirror-focused,
-.ProseMirror:focus {
-  outline: none !important;
-  border: none !important;
-  box-shadow: none !important;
+/* Publication Body Headings Spacing - H2 space before reduced in line with H1 & H3 */
+.ProseMirror h1 {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 800;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.75rem !important;
+  line-height: 1.25;
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+.ProseMirror h2 {
+  font-family: var(--font-serif);
+  font-size: 1.65rem;
+  font-weight: 700;
+  margin-top: 1.35rem !important; /* Reduced space before H2 in line with H1 & H3 */
+  margin-bottom: 0.65rem !important;
+  line-height: 1.3;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(115, 123, 133, 0.2);
 }
 
-.animate-slide-up {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.ProseMirror h3 {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-top: 1.25rem !important;
+  margin-bottom: 0.5rem !important;
+  line-height: 1.35;
 }
 
+.ProseMirror h4 {
+  font-family: var(--font-sans);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 1rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.ProseMirror > *:first-child {
+  margin-top: 0 !important;
+}
+
+/* Editorial Horizontal Rule (<hr>) with reduced gap */
+.ProseMirror hr,
+.prose hr,
+.prose-editorial hr,
+hr {
+  border: 0 !important;
+  border-top: 1.5px solid rgba(115, 123, 133, 0.25) !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.5rem !important;
+  height: 0 !important;
+  clear: both;
+}
+
+.dark .ProseMirror hr,
+.dark .prose hr,
+.dark .prose-editorial hr,
+.dark hr {
+  border-top-color: rgba(115, 139, 167, 0.35) !important;
+}
+
+/* Reduce gap on any heading, paragraph, or element immediately following an hr */
+.ProseMirror hr + *,
+.prose hr + *,
+.prose-editorial hr + * {
+  margin-top: 0.5rem !important;
+}
+
+/* Smooth Animations */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out forwards;
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

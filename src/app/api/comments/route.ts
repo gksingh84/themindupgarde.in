@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { Comment } from '@/types/blog';
+import { sendAdminNotification } from '@/lib/notification-service';
 
 const COMMENTS_FILE = path.join(process.cwd(), 'src/data/comments.json');
 
@@ -79,6 +80,19 @@ export async function POST(request: Request) {
 
     comments.unshift(newComment);
     saveCommentsServer(comments);
+
+    // Trigger admin email notification asynchronously
+    sendAdminNotification({
+      type: 'comment',
+      title: `New Comment on "${body.postSlug}"`,
+      message: `${newComment.authorName} commented: "${newComment.content}"`,
+      details: {
+        authorName: newComment.authorName,
+        authorEmail: newComment.authorEmail,
+        postSlug: newComment.postSlug,
+        content: newComment.content,
+      },
+    }).catch((err) => console.error('Notification dispatch error:', err));
 
     return NextResponse.json(newComment, { status: 201 });
   } catch (err) {

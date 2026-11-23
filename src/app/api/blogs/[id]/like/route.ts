@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getBlogsServer, saveBlogsServer } from '@/lib/blog-service';
+import { sendAdminNotification } from '@/lib/notification-service';
 
 export async function POST(
   request: Request,
@@ -16,6 +17,18 @@ export async function POST(
 
     blogs[index].likes = (blogs[index].likes || 0) + 1;
     saveBlogsServer(blogs);
+
+    // Trigger admin email notification asynchronously
+    sendAdminNotification({
+      type: 'like',
+      title: `❤️ New Like on "${blogs[index].title}"`,
+      message: `Someone liked your article "${blogs[index].title}". Total likes: ${blogs[index].likes}`,
+      details: {
+        blogId: blogs[index].id,
+        blogTitle: blogs[index].title,
+        totalLikes: blogs[index].likes,
+      },
+    }).catch((err) => console.error('Notification dispatch error:', err));
 
     return NextResponse.json({ likes: blogs[index].likes });
   } catch (err) {

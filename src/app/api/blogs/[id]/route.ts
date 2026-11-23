@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getBlogsServer, saveBlogsServer } from '@/lib/blog-service';
 import { BlogPost } from '@/types/blog';
+import { formatDateDDMMYYYY, parseDate } from '@/lib/date-utils';
 
 export async function GET(
   request: Request,
@@ -34,7 +35,15 @@ export async function PUT(
     blogs[index] = {
       ...blogs[index],
       ...updates,
+      publishedAt: updates.publishedAt ? formatDateDDMMYYYY(updates.publishedAt) : blogs[index].publishedAt,
     };
+
+    // Keep blogs sorted chronologically by publication date
+    blogs.sort((a, b) => {
+      const dateB = parseDate(b.publishedAt).getTime();
+      const dateA = parseDate(a.publishedAt).getTime();
+      return dateB - dateA;
+    });
 
     saveBlogsServer(blogs);
     return NextResponse.json(blogs[index]);

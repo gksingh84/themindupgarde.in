@@ -1,29 +1,25 @@
-'use me';
 import React from 'react';
-import Link from 'next/link';
-import { getBlogsServer } from '@/lib/blog-service';
-import { CATEGORIES } from '@/data/categories';
-import { BlogCard } from '@/components/BlogCard';
-import { 
-  Sparkles, 
-  ArrowRight, 
-  Zap, 
-  Brain, 
-  Cpu, 
-  Activity, 
-  TrendingUp, 
-  Compass, 
-  CheckCircle2, 
-  Search,
-  BookOpen
-} from 'lucide-react';
+import { getBlogsServer, getEditorsPicks, getPopularBlogs, getFeaturedArticles } from '@/lib/blog-service';
 import { HomeClientView } from '@/components/HomeClientView';
 
-export const revalidate = 60; // Revalidate every minute
+export const revalidate = 60; // ISR revalidate every 60 seconds
 
 export default function HomePage() {
-  const blogs = getBlogsServer().filter((b) => b.status === 'published');
-  const featuredPost = blogs.find((b) => b.featured) || blogs[0];
+  const allBlogs = getBlogsServer();
+  const publishedBlogs = allBlogs.filter((b) => b.status === 'published');
+  
+  // Featured post: specifically selected or first featured or latest
+  const featuredPosts = getFeaturedArticles(4);
+  const featuredPost = featuredPosts[0] || publishedBlogs[0];
+  const editorsPicks = getEditorsPicks(4);
+  const popularPosts = getPopularBlogs(5);
 
-  return <HomeClientView initialBlogs={blogs} featuredPost={featuredPost} />;
+  return (
+    <HomeClientView
+      initialBlogs={publishedBlogs}
+      featuredPost={featuredPost}
+      editorsPicks={editorsPicks}
+      popularPosts={popularPosts}
+    />
+  );
 }

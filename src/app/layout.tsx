@@ -1,60 +1,41 @@
 import type { Metadata } from 'next';
-import { Space_Grotesk, Inter, Poppins } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { LayoutWrapper } from '@/components/LayoutWrapper';
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-space',
-  display: 'swap',
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
-
-const poppins = Poppins({
-  weight: ['400', '600', '700'],
-  subsets: ['latin'],
-  variable: '--font-poppins',
-  display: 'swap',
-});
-
 export const metadata: Metadata = {
   title: {
-    default: 'The Mind Upgrade | Level Up Your Mind, One Idea at a Time',
+    default: 'The Mind Upgrade | Fresh Insights for a Smarter Life',
     template: '%s | The Mind Upgrade',
   },
   description:
-    'A modern publication for growth-minded thinkers. Explore mental models, deep work protocols, AI technology, health neurobiology, and financial sovereignty.',
+    'A premium independent publishing platform exploring Personal Finance, Insurance, Psychology, Economy, and Practical Daily Wisdom.',
   keywords: [
     'The Mind Upgrade',
+    'Personal Finance',
+    'Insurance Guide',
+    'Psychology and Decision Making',
+    'Economy and Current Affairs',
+    'Daily Insights',
+    'Financial Literacy',
     'Mental Models',
-    'Productivity Systems',
-    'Deep Work',
-    'Stoic Philosophy',
-    'AI Technology',
-    'Self Improvement',
     'themindupgrade.in',
   ],
   authors: [{ name: 'The Mind Upgrade Team', url: 'https://themindupgrade.in' }],
   metadataBase: new URL('https://themindupgrade.in'),
   openGraph: {
-    title: 'The Mind Upgrade | Level Up Your Mind, One Idea at a Time',
+    title: 'The Mind Upgrade | Fresh Insights for a Smarter Life',
     description:
-      'High-leverage mental models, productivity, tech, and philosophy for intentional thinkers.',
+      'Discover practical insights on money, psychology, economics and everyday life. Because better understanding leads to better decisions.',
     url: 'https://themindupgrade.in',
     siteName: 'The Mind Upgrade',
     images: [
       {
-        url: '/images/deep-work.svg',
+        url: '/logo.png',
         width: 1200,
         height: 630,
-        alt: 'The Mind Upgrade Preview',
+        alt: 'The Mind Upgrade Emblem',
       },
     ],
     locale: 'en_US',
@@ -63,8 +44,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'The Mind Upgrade',
-    description: 'Level Up Your Mind, One Idea at a Time.',
-    images: ['/images/deep-work.svg'],
+    description: 'Fresh Insights for a Smarter Life',
+    images: ['/logo.png'],
   },
   icons: {
     icon: '/favicon.svg',
@@ -78,13 +59,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${poppins.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body
-        className="min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white bg-slate-50 text-slate-900 dark:bg-[#090d16] dark:text-slate-100"
+        className="min-h-screen flex flex-col antialiased selection:bg-amber-500 selection:text-white bg-[#FAFAF7] text-[#252B32] dark:bg-[#0E1724] dark:text-[#E2E8F0] transition-colors duration-200"
         suppressHydrationWarning
       >
         <ThemeProvider>

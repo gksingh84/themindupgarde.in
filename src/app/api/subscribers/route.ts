@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSubscribersServer, saveSubscribersServer, Subscriber } from '@/lib/subscriber-service';
 import { formatDateDDMMYYYY } from '@/lib/date-utils';
+import { sendAdminNotification } from '@/lib/notification-service';
 
 export async function GET() {
   try {
@@ -37,6 +38,18 @@ export async function POST(request: Request) {
 
     subscribers.unshift(newSub);
     saveSubscribersServer(subscribers);
+
+    // Trigger admin email notification asynchronously
+    sendAdminNotification({
+      type: 'subscriber',
+      title: '📧 New Community Subscriber!',
+      message: `${newSub.name} (${newSub.email}) joined your newsletter audience.`,
+      details: {
+        subscriberId: newSub.id,
+        email: newSub.email,
+        name: newSub.name,
+      },
+    }).catch((err) => console.error('Notification dispatch error:', err));
 
     return NextResponse.json(newSub, { status: 201 });
   } catch (err) {

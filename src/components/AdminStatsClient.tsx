@@ -22,8 +22,10 @@ import {
   Sparkles,
   Award,
   BookOpen,
+  Bell,
 } from 'lucide-react';
 import { SubscribersCommunitySection } from '@/components/SubscribersCommunitySection';
+import { Subscriber } from '@/lib/subscriber-service';
 
 interface AdminStatsClientProps {
   initialBlogs: BlogPost[];
@@ -32,8 +34,9 @@ interface AdminStatsClientProps {
 export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [blogs] = useState<BlogPost[]>(initialBlogs);
+  const [blogs, setBlogs] = useState<BlogPost[]>(initialBlogs);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -41,12 +44,35 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
   }, []);
 
   useEffect(() => {
-    fetch('/api/comments')
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setComments(data);
-      })
-      .catch(() => {});
+    const fetchAllStats = () => {
+      // Fetch latest blogs to get real-time view counts
+      fetch('/api/blogs')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setBlogs(data);
+        })
+        .catch(() => {});
+
+      // Fetch comments for statistics
+      fetch('/api/comments')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setComments(data);
+        })
+        .catch(() => {});
+
+      // Fetch subscribers for real-time stats
+      fetch('/api/subscribers')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setSubscribers(data);
+        })
+        .catch(() => {});
+    };
+
+    fetchAllStats();
+    const interval = setInterval(fetchAllStats, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -70,7 +96,7 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
   const totalViews = blogs.reduce((acc, b) => acc + (b.views || 0), 0);
   const totalLikes = blogs.reduce((acc, b) => acc + (b.likes || 0), 0);
   const totalComments = comments.length;
-  const totalSubscribers = 1482; // Simulated active subscriber base
+  const totalSubscribers = subscribers.length;
 
   // Views Breakdown
   const dailyViews = Math.round(totalViews * 0.045); // ~4.5% of total
@@ -84,15 +110,15 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
 
   const maxViews = top5Blogs[0]?.views || 1;
 
-  // Everyday Traffic Data for a Week (Last 7 Days)
+  // Everyday Traffic Data for a Week (Last 7 Days - dynamically scaled with live totalViews)
   const weeklyTrafficData = [
-    { day: 'Mon', date: 'Sep 28', views: 1840, visitors: 1210 },
-    { day: 'Tue', date: 'Sep 29', views: 2150, visitors: 1430 },
-    { day: 'Wed', date: 'Sep 30', views: 2420, visitors: 1650 },
-    { day: 'Thu', date: 'Oct 01', views: 2890, visitors: 1940 }, // Peak
-    { day: 'Fri', date: 'Oct 02', views: 2210, visitors: 1510 },
-    { day: 'Sat', date: 'Oct 03', views: 1980, visitors: 1320 },
-    { day: 'Sun', date: 'Oct 04', views: 2450, visitors: 1680 },
+    { day: 'Mon', date: 'Sep 28', views: Math.round(totalViews * 0.11), visitors: Math.round(totalViews * 0.08) },
+    { day: 'Tue', date: 'Sep 29', views: Math.round(totalViews * 0.13), visitors: Math.round(totalViews * 0.09) },
+    { day: 'Wed', date: 'Sep 30', views: Math.round(totalViews * 0.14), visitors: Math.round(totalViews * 0.10) },
+    { day: 'Thu', date: 'Oct 01', views: Math.round(totalViews * 0.18), visitors: Math.round(totalViews * 0.12) },
+    { day: 'Fri', date: 'Oct 02', views: Math.round(totalViews * 0.13), visitors: Math.round(totalViews * 0.09) },
+    { day: 'Sat', date: 'Oct 03', views: Math.round(totalViews * 0.12), visitors: Math.round(totalViews * 0.08) },
+    { day: 'Sun', date: 'Oct 04', views: Math.round(totalViews * 0.19), visitors: Math.round(totalViews * 0.14) },
   ];
 
   const maxDailyViews = Math.max(...weeklyTrafficData.map((d) => d.views));
@@ -188,6 +214,13 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
           <span className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow-xs">
             Analytics &amp; Stats
           </span>
+          <Link
+            href="/admin"
+            className="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <Bell className="w-3.5 h-3.5" />
+            <span>Email Notifications</span>
+          </Link>
           <Link
             href="/admin/new"
             className="px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"

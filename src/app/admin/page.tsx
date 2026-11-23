@@ -1,4 +1,3 @@
-'use me';
 import React from 'react';
 import { getBlogsServer } from '@/lib/blog-service';
 import { AdminDashboardClient } from '@/components/AdminDashboardClient';

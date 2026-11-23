@@ -6,200 +6,294 @@ import { BlogPost } from '@/types/blog';
 import { CATEGORIES } from '@/data/categories';
 import { BlogCard } from '@/components/BlogCard';
 import { useToast } from '@/context/ToastContext';
+import { formatDateDDMMYYYY } from '@/lib/date-utils';
 import { 
   ArrowRight, 
-  Zap, 
+  Coins, 
+  ShieldCheck, 
+  Brain, 
   TrendingUp, 
-  Building2,
-  ShieldCheck,
-  FileText,
-  Send,
+  Lightbulb, 
+  Compass, 
+  Send, 
+  Sparkles, 
+  Award, 
+  Flame, 
+  Clock, 
   Layers,
-  Sparkles,
-  Compass
+  ChevronRight,
+  BookOpen
 } from 'lucide-react';
 
 interface HomeClientViewProps {
   initialBlogs: BlogPost[];
   featuredPost: BlogPost;
+  editorsPicks?: BlogPost[];
+  popularPosts?: BlogPost[];
 }
 
-export function HomeClientView({ initialBlogs, featuredPost }: HomeClientViewProps) {
+export function HomeClientView({ 
+  initialBlogs, 
+  featuredPost,
+  editorsPicks = [],
+  popularPosts = [] 
+}: HomeClientViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [popularPeriod, setPopularPeriod] = useState<'7d' | '30d' | 'all'>('7d');
+  const [visibleCount, setVisibleCount] = useState<number>(6);
   const [newsletterName, setNewsletterName] = useState('');
   const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterAgreed, setNewsletterAgreed] = useState(false);
+  const [submittingNewsletter, setSubmittingNewsletter] = useState(false);
   const { showToast } = useToast();
 
   const getCategoryIcon = (iconName: string) => {
     switch (iconName) {
-      case 'TrendingUp': return <TrendingUp className="w-5 h-5 text-amber-500" />;
-      case 'Building2': return <Building2 className="w-5 h-5 text-cyan-600" />;
-      case 'ShieldCheck': return <ShieldCheck className="w-5 h-5 text-emerald-600" />;
-      case 'Zap': return <Zap className="w-5 h-5 text-indigo-600" />;
-      case 'FileText': return <FileText className="w-5 h-5 text-purple-600" />;
-      default: return <Compass className="w-5 h-5 text-blue-600" />;
+      case 'Coins':
+        return <Coins className="w-5 h-5 text-amberBrand" />;
+      case 'ShieldCheck':
+        return <ShieldCheck className="w-5 h-5 text-slateBrand" />;
+      case 'Brain':
+        return <Brain className="w-5 h-5 text-navy-800 dark:text-amberBrand" />;
+      case 'TrendingUp':
+        return <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />;
+      case 'Lightbulb':
+        return <Lightbulb className="w-5 h-5 text-amber-500" />;
+      default:
+        return <Compass className="w-5 h-5 text-slateBrand" />;
     }
   };
 
+  // Filtered by selected category pill
   const filteredBlogs = initialBlogs.filter((b) => {
     if (selectedCategory === 'All') return true;
     return b.category.toLowerCase() === selectedCategory.toLowerCase();
   });
 
+  const visibleBlogs = filteredBlogs.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredBlogs.length;
+
+  // Category counts
+  const getCategoryCount = (catName: string) => {
+    return initialBlogs.filter((b) => b.category.toLowerCase() === catName.toLowerCase()).length;
+  };
+
+  // Featured grid posts (excluding hero if possible, up to 3)
+  const featuredGrid = initialBlogs
+    .filter((b) => b.id !== featuredPost?.id && (b.featured || b.editorsPick))
+    .slice(0, 3);
+
+  // Fallback if not enough featured
+  const secondaryFeatured = featuredGrid.length > 0 
+    ? featuredGrid 
+    : initialBlogs.filter((b) => b.id !== featuredPost?.id).slice(0, 3);
+
+  // Editor's picks
+  const resolvedEditorsPicks = editorsPicks.length > 0 
+    ? editorsPicks 
+    : initialBlogs.slice(1, 5);
+
+  // Popular posts sorted by views
+  const resolvedPopular = popularPosts.length > 0 
+    ? popularPosts 
+    : [...initialBlogs].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
+
   const handleNewsletter = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newsletterEmail || !newsletterEmail.includes('@')) {
-      showToast('Please enter a valid email address', 'error');
+      showToast('Please enter a valid email address.', 'error');
       return;
     }
+    if (!newsletterAgreed) {
+      showToast('Please agree to receive editorial newsletters.', 'error');
+      return;
+    }
+
+    setSubmittingNewsletter(true);
     try {
       const res = await fetch('/api/subscribers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newsletterName.trim(), email: newsletterEmail.trim() }),
+        body: JSON.stringify({ name: newsletterName.trim(), email: newsletterEmail.trim(), source: 'homepage' }),
       });
+      const data = await res.json();
       if (res.ok) {
-        showToast('Welcome to The Mind Upgrade newsletter!', 'success');
+        showToast('Subscribed to The Mind Upgrade newsletter!', 'success');
         setNewsletterName('');
         setNewsletterEmail('');
+        setNewsletterAgreed(false);
       } else {
-        showToast('Failed to subscribe. Please try again.', 'error');
+        showToast(data.message || 'Already subscribed or invalid email.', 'info');
       }
     } catch {
-      showToast('Welcome to The Mind Upgrade newsletter!', 'success');
+      showToast('Subscribed to The Mind Upgrade newsletter!', 'success');
       setNewsletterName('');
       setNewsletterEmail('');
+    } finally {
+      setSubmittingNewsletter(false);
     }
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-16 bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100">
-      
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-2 pb-1 lg:pt-3 lg:pb-2">
-        {/* Soft Background Glow Accents */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[550px] h-[550px] bg-amber-500/10 dark:bg-amber-600/15 blur-[150px] pointer-events-none rounded-full" />
-        <div className="absolute top-1/3 left-1/4 w-[380px] h-[380px] bg-indigo-500/10 blur-[130px] pointer-events-none rounded-full" />
+    <div className="space-y-12 sm:space-y-16 pb-20">
 
-        <div className="container-custom relative z-10 text-center space-y-3">
+      {/* ========================================================
+          4.C: EDITORIAL HERO SECTION
+          ======================================================== */}
+      <section className="relative overflow-hidden pt-4 sm:pt-6 pb-2">
+        {/* Subtle background ambient gradients */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-amberBrand/8 blur-[160px] pointer-events-none rounded-full" />
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-slateBrand/10 blur-[140px] pointer-events-none rounded-full" />
+
+        <div className="container-custom relative z-10 space-y-8">
           
-          {/* Logo Icon Emblem */}
-          <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full overflow-hidden border-4 border-amber-400 dark:border-amber-400/90 shadow-2xl shadow-amber-500/30 flex items-center justify-center bg-amber-400 hover:scale-105 transition-transform duration-300">
-            <img src="/logo.png" alt="The Mind Upgrade Emblem" className="w-full h-full object-cover scale-[1.14]" />
-          </div>
+          {/* Header intro box */}
+          <div className="hero-box text-center space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slateBrand/10 border border-slateBrand/20 text-slateBrand dark:text-amberBrand text-xs font-bold tracking-wider uppercase">
+              <Sparkles className="w-3.5 h-3.5 text-amberBrand" />
+              <span>Independent Digital Publication</span>
+            </div>
 
-          {/* Headline & Subheading */}
-          <div className="hero-box space-y-1.5">
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-center leading-tight">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-violet-600 to-cyan-500">
-                THE MIND UPGRADE
-              </span>
+            <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-black text-navy-800 dark:text-offwhite tracking-tight leading-[1.15]">
+              Understand More. Think Better. Live Smarter.
             </h1>
 
-            <h2 className="text-xs sm:text-base lg:text-lg font-extrabold tracking-widest text-slate-800 dark:text-slate-100 text-center uppercase">
-              FRESH INSIGHTS FOR A SMARTER LIFE
-            </h2>
-
-            {/* Tagline */}
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed text-center pt-0.5">
-              Deconstruct complex mental models, master deep focus protocols, explore high-leverage technology, and build sustainable wealth.
+            <p className="font-sans text-sm sm:text-base lg:text-lg text-charcoal-700 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+              Discover practical insights on money, psychology, economics and everyday life. Because better understanding leads to better decisions.
             </p>
           </div>
 
-          {/* Action CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 py-0.5 max-w-md mx-auto">
-            <a
-              href="#latest-articles"
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all hover:scale-105"
-            >
-              <span>Explore Articles</span>
-              <ArrowRight className="w-4 h-4" />
-            </a>
-
-            <Link
-              href="/categories"
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-bold text-xs sm:text-sm border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2 transition-all shadow-sm"
-            >
-              <Layers className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-              <span>Browse Categories</span>
-            </Link>
-          </div>
+          {/* Hero Featured Article Spotlight Card */}
+          {featuredPost && (
+            <div className="pt-2">
+              <BlogCard post={featuredPost} featured={true} />
+            </div>
+          )}
 
         </div>
       </section>
 
-      {/* Featured Post Section */}
-      {featuredPost && (
-        <section className="container-custom pt-0">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
-              ★ Highlighted Article
-            </h2>
+      {/* ========================================================
+          4.D: FEATURED ARTICLES EDITORIAL GRID (3-4 Cards)
+          ======================================================== */}
+      {secondaryFeatured.length > 0 && (
+        <section className="container-custom space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-navy-700 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-6 bg-amberBrand rounded-full" />
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-navy-800 dark:text-offwhite">
+                Featured Stories
+              </h2>
+            </div>
+            <Link
+              href="/archive"
+              className="text-xs font-bold text-slateBrand dark:text-amberBrand hover:underline flex items-center gap-1"
+            >
+              <span>View Archive</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-          <BlogCard post={featuredPost} featured={true} />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {secondaryFeatured.map((post) => (
+              <BlogCard key={post.id} post={post} />
+            ))}
+          </div>
         </section>
       )}
 
-      {/* Categories Preview Strip */}
-      <section className="container-custom">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
-            Explore Knowledge Domains
-          </h2>
+      {/* ========================================================
+          4.F: EXPLORE CATEGORIES (5 Core Categories)
+          ======================================================== */}
+      <section className="container-custom space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-navy-700 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-6 bg-slateBrand rounded-full" />
+            <div>
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-navy-800 dark:text-offwhite">
+                Explore Knowledge Domains
+              </h2>
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-0.5">
+                Structured mental models and actionable guides divided into five primary subjects.
+              </p>
+            </div>
+          </div>
           <Link
             href="/categories"
-            className="text-xs font-bold text-blue-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
+            className="text-xs font-bold text-slateBrand dark:text-amberBrand hover:underline flex items-center gap-1 shrink-0"
           >
-            <span>View All</span>
+            <span>All Domains</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {CATEGORIES.map((cat) => (
-            <Link
-              key={cat.slug}
-              href={`/categories/${cat.slug}`}
-              className="group p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all duration-300 space-y-2 flex flex-col justify-between hover:-translate-y-1 shadow-sm hover:shadow-md"
-            >
-              <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-950 w-fit group-hover:scale-110 transition-transform">
-                {getCategoryIcon(cat.iconName)}
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-cyan-400 transition-colors">
-                  {cat.name}
-                </h3>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                  {cat.description}
-                </p>
-              </div>
-            </Link>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {CATEGORIES.map((cat) => {
+            const count = getCategoryCount(cat.name);
+            return (
+              <Link
+                key={cat.slug}
+                href={`/categories/${cat.slug}`}
+                className="group p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 hover:border-amberBrand/60 transition-all duration-300 shadow-editorial hover:shadow-editorial-hover flex flex-col justify-between hover:-translate-y-1"
+              >
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl bg-slate-100 dark:bg-navy-800 w-fit group-hover:scale-110 transition-transform">
+                    {getCategoryIcon(cat.iconName)}
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-base font-bold text-navy-800 dark:text-offwhite group-hover:text-amberBrand transition-colors">
+                      {cat.name}
+                    </h3>
+                    <p className="text-xs text-charcoal-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                      {cat.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 dark:border-navy-800 flex items-center justify-between text-xs mt-3">
+                  <span className="font-semibold text-charcoal-500 dark:text-slate-400">
+                    {count} {count === 1 ? 'article' : 'articles'}
+                  </span>
+                  <span className="font-bold text-amberBrand flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
+                    Explore &rarr;
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
-      {/* Latest Blogs Section with Category Pills Filter */}
+      {/* ========================================================
+          4.E: LATEST ARTICLES (With Category Filter & Load More)
+          ======================================================== */}
       <section id="latest-articles" className="container-custom space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
-              Latest Intel &amp; Articles
-            </h2>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-              Curated thoughts on self-upgrade, systems, and modern wisdom.
-            </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-navy-700 pb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-6 bg-amberBrand rounded-full" />
+            <div>
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-navy-800 dark:text-offwhite">
+                Latest Publications
+              </h2>
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-0.5">
+                Fresh insights on money, psychology, society, and everyday life.
+              </p>
+            </div>
           </div>
 
-          {/* Category Pills Filter */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
             {['All', ...CATEGORIES.map((c) => c.name)].map((catName) => (
               <button
                 key={catName}
-                onClick={() => setSelectedCategory(catName)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                onClick={() => {
+                  setSelectedCategory(catName);
+                  setVisibleCount(6);
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedCategory === catName
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-navy-800 dark:bg-amberBrand text-white dark:text-navy-950 shadow-sm'
+                    : 'bg-white dark:bg-navy-900 text-charcoal-700 dark:text-slate-300 border border-slate-200 dark:border-navy-700 hover:bg-slate-100 dark:hover:bg-navy-800'
                 }`}
               >
                 {catName}
@@ -208,73 +302,212 @@ export function HomeClientView({ initialBlogs, featuredPost }: HomeClientViewPro
           </div>
         </div>
 
-        {/* Blog Posts Grid */}
-        {filteredBlogs.length === 0 ? (
-          <div className="py-12 text-center text-slate-500 space-y-2 bg-white dark:bg-slate-900/40 rounded-3xl border border-slate-200 dark:border-slate-800">
-            <Compass className="w-8 h-8 mx-auto text-slate-400 animate-spin" />
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No articles found in &quot;{selectedCategory}&quot;</p>
-            <p className="text-xs text-slate-500">Select another category or add a new article from the admin panel.</p>
+        {/* Blog Post Grid */}
+        {visibleBlogs.length === 0 ? (
+          <div className="py-14 text-center text-charcoal-500 space-y-2 bg-white dark:bg-navy-900 rounded-3xl border border-slate-200 dark:border-navy-700">
+            <BookOpen className="w-8 h-8 mx-auto text-slateBrand" />
+            <p className="text-sm font-bold text-navy-800 dark:text-offwhite">No articles found in &quot;{selectedCategory}&quot;</p>
+            <p className="text-xs text-charcoal-500">Select another category or check back soon for newly published guides.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            {filteredBlogs.map((post) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {visibleBlogs.map((post) => (
               <BlogCard key={post.id} post={post} />
             ))}
           </div>
         )}
+
+        {/* Load More Button */}
+        {hasMore && (
+          <div className="text-center pt-4">
+            <button
+              onClick={() => setVisibleCount((prev) => prev + 6)}
+              className="px-6 py-2.5 rounded-xl bg-white dark:bg-navy-900 hover:bg-slate-50 dark:hover:bg-navy-800 text-navy-800 dark:text-offwhite border border-slate-300 dark:border-navy-700 font-bold text-xs sm:text-sm shadow-sm transition-all hover:scale-105 cursor-pointer"
+            >
+              Load More Articles &darr;
+            </button>
+          </div>
+        )}
       </section>
 
-      {/* Newsletter Signup Banner - Compact & Light Theme */}
+      {/* ========================================================
+          4.G: EDITOR'S PICKS & 4.H: MOST POPULAR ARTICLES (Split)
+          ======================================================== */}
       <section className="container-custom">
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-blue-50/90 via-white to-amber-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/60 border border-blue-100 dark:border-slate-800 p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-          {/* Subtle Accent Glow */}
-          <div className="absolute top-1/2 left-0 -translate-y-1/2 w-48 h-48 bg-blue-500/10 blur-3xl pointer-events-none rounded-full" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
-            
-            {/* Left: Icon & Headline */}
-            <div className="flex items-center gap-3.5 max-w-xl">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-600/20">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight leading-snug">
-                  Upgrade Your Brain Weekly
+          {/* 4.G: Editor's Picks (7 cols) */}
+          <div className="lg:col-span-7 space-y-5">
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-navy-700 pb-3">
+              <Award className="w-5 h-5 text-amberBrand" />
+              <h2 className="font-serif text-xl font-bold text-navy-800 dark:text-offwhite">
+                Editor&apos;s Curated Picks
+              </h2>
+            </div>
+
+            <div className="space-y-4">
+              {resolvedEditorsPicks.slice(0, 3).map((post) => (
+                <article
+                  key={post.id}
+                  className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 hover:border-amberBrand/60 transition-all shadow-editorial hover:shadow-editorial-hover flex flex-col sm:flex-row items-start gap-4 group"
+                >
+                  <div className="w-full sm:w-36 h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-navy-950 shrink-0">
+                    <img
+                      src={post.coverImage}
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold text-charcoal-500 dark:text-slate-400">
+                      <span className="text-amberBrand font-bold">{post.category}</span>
+                      <span>•</span>
+                      <span>{post.readTime}</span>
+                    </div>
+                    <Link href={`/blog/${post.slug}`}>
+                      <h3 className="font-serif text-base sm:text-lg font-bold text-navy-800 dark:text-offwhite group-hover:text-amberBrand transition-colors line-clamp-2 leading-snug">
+                        {post.title}
+                      </h3>
+                    </Link>
+                    <p className="text-xs text-charcoal-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                      {post.excerpt}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          {/* 4.H: Most Popular Articles by Real Analytics (5 cols) */}
+          <div className="lg:col-span-5 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-navy-700 pb-3">
+              <div className="flex items-center gap-2">
+                <Flame className="w-5 h-5 text-amberBrand" />
+                <h2 className="font-serif text-xl font-bold text-navy-800 dark:text-offwhite">
+                  Most Read Insights
                 </h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-normal mt-0.5">
-                  Join 15,000+ thinkers. Receive 1 actionable mental model every Sunday. Zero spam.
-                </p>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] font-bold">
+                <button
+                  onClick={() => setPopularPeriod('7d')}
+                  className={`px-2 py-0.5 rounded ${popularPeriod === '7d' ? 'bg-amberBrand text-navy-950 font-bold' : 'text-charcoal-500'}`}
+                >
+                  7D
+                </button>
+                <button
+                  onClick={() => setPopularPeriod('30d')}
+                  className={`px-2 py-0.5 rounded ${popularPeriod === '30d' ? 'bg-amberBrand text-navy-950 font-bold' : 'text-charcoal-500'}`}
+                >
+                  30D
+                </button>
+                <button
+                  onClick={() => setPopularPeriod('all')}
+                  className={`px-2 py-0.5 rounded ${popularPeriod === 'all' ? 'bg-amberBrand text-navy-950 font-bold' : 'text-charcoal-500'}`}
+                >
+                  All
+                </button>
               </div>
             </div>
 
-            {/* Right: Inline Input & Subscribe Button */}
-            <form onSubmit={handleNewsletter} className="w-full md:w-auto flex flex-col sm:flex-row items-center gap-2 shrink-0">
-              <input
-                type="text"
-                value={newsletterName}
-                onChange={(e) => setNewsletterName(e.target.value)}
-                placeholder="Your Name (Optional)"
-                className="w-full sm:w-44 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 px-3.5 py-2 rounded-xl text-xs focus:outline-none focus:border-blue-500 transition-colors shadow-2xs"
-              />
-              <input
-                type="email"
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-                placeholder="Enter email address..."
-                className="w-full sm:w-56 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 px-3.5 py-2 rounded-xl text-xs focus:outline-none focus:border-blue-500 transition-colors shadow-2xs"
-              />
-              <button
-                type="submit"
-                className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-600/30 flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer"
-              >
-                <span>Subscribe Free</span>
-                <Send className="w-3.5 h-3.5" />
-              </button>
-            </form>
+            <div className="space-y-3">
+              {resolvedPopular.slice(0, 5).map((post, idx) => (
+                <Link
+                  key={post.id}
+                  href={`/blog/${post.slug}`}
+                  className="p-3.5 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 hover:border-amberBrand/60 transition-all flex items-start gap-3.5 group shadow-xs"
+                >
+                  <span className="font-serif text-xl sm:text-2xl font-black text-amberBrand/60 group-hover:text-amberBrand transition-colors leading-none w-6 shrink-0 pt-0.5">
+                    0{idx + 1}
+                  </span>
+                  <div className="space-y-1 flex-1">
+                    <span className="text-[10px] font-bold text-slateBrand dark:text-slate-400 uppercase tracking-wider">
+                      {post.category}
+                    </span>
+                    <h4 className="font-serif text-xs sm:text-sm font-bold text-navy-800 dark:text-offwhite group-hover:text-amberBrand transition-colors line-clamp-2 leading-snug">
+                      {post.title}
+                    </h4>
+                    <div className="flex items-center gap-2 text-[10px] text-charcoal-500 dark:text-slate-400 pt-0.5">
+                      <span>{post.views || 0} reads</span>
+                      <span>•</span>
+                      <span>{post.readTime}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
 
+        </div>
+      </section>
+
+      {/* ========================================================
+          4.I: NEWSLETTER SUBSCRIPTION SECTION
+          ======================================================== */}
+      <section id="newsletter-section" className="container-custom">
+        <div className="relative rounded-3xl overflow-hidden bg-navy-800 text-offwhite border border-navy-700 p-8 sm:p-12 shadow-editorial-hover">
+          {/* Warm Amber Accent Glow */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-amberBrand/10 blur-[100px] pointer-events-none rounded-full" />
+          <div className="absolute bottom-0 left-0 w-60 h-60 bg-slateBrand/15 blur-[90px] pointer-events-none rounded-full" />
+
+          <div className="relative z-10 max-w-2xl mx-auto text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amberBrand text-navy-950 flex items-center justify-center mx-auto shadow-md shadow-amberBrand/30">
+              <Sparkles className="w-6 h-6" />
+            </div>
+
+            <h2 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-tight">
+              Upgrade Your Mind. One Insight at a Time.
+            </h2>
+
+            <p className="font-sans text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg mx-auto">
+              Get thoughtful articles, practical knowledge and fresh perspectives delivered directly to your inbox.
+            </p>
+
+            <form onSubmit={handleNewsletter} className="space-y-3 pt-3 max-w-md mx-auto">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={newsletterName}
+                  onChange={(e) => setNewsletterName(e.target.value)}
+                  placeholder="Your Name (Optional)"
+                  className="bg-navy-950/80 border border-navy-700 text-offwhite placeholder-slate-400 px-4 py-2.5 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amberBrand transition-colors sm:w-44"
+                />
+                <input
+                  type="email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  placeholder="Enter email address..."
+                  required
+                  className="flex-1 bg-navy-950/80 border border-navy-700 text-offwhite placeholder-slate-400 px-4 py-2.5 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amberBrand transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                <label className="flex items-start gap-2 text-left cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newsletterAgreed}
+                    onChange={(e) => setNewsletterAgreed(e.target.checked)}
+                    className="mt-0.5 rounded border-navy-700 bg-navy-950 text-amberBrand focus:ring-0"
+                  />
+                  <span className="text-[11px] text-slate-400 leading-tight">
+                    I agree to the <Link href="/privacy-policy" className="underline hover:text-white">Privacy Policy</Link> and wish to receive the weekly email digest.
+                  </span>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={submittingNewsletter}
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-amberBrand hover:bg-amberBrand/90 text-navy-950 font-bold text-xs sm:text-sm shadow-md shadow-amberBrand/25 flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
+                >
+                  <span>Subscribe Free</span>
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </section>
+
     </div>
   );
 }

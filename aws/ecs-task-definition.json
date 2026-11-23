@@ -1,0 +1,58 @@
+{
+  "family": "themindupgrade-production",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/themindupgrade-task-role",
+  "containerDefinitions": [
+    {
+      "name": "themindupgrade-web",
+      "image": "YOUR_AWS_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/themindupgrade:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "NEXT_PUBLIC_APP_URL",
+          "value": "https://themindupgrade.in"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:YOUR_AWS_ACCOUNT_ID:secret:themindupgrade/db_url-xxxxxx"
+        },
+        {
+          "name": "NEXT_PUBLIC_ADMIN_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:YOUR_AWS_ACCOUNT_ID:secret:themindupgrade/admin_password-xxxxxx"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/themindupgrade-production",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/settings || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      }
+    }
+  ]
+}

@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BlogPost, CategoryType } from '@/types/blog';
+import { BlogPost, ArticleStatus } from '@/types/blog';
 import { CATEGORIES } from '@/data/categories';
 import { TipTapEditor } from '@/components/TipTapEditor';
 import { useToast } from '@/context/ToastContext';
 import { ClientStorage } from '@/lib/client-storage';
+import { formatDate, formatDateDDMMYYYY, parseDate } from '@/lib/date-utils';
 import {
   ArrowLeft,
   Save,
@@ -20,7 +21,11 @@ import {
   User,
   Trash2,
   Eye,
-  EyeOff,
+  Calendar,
+  Clock,
+  Layers,
+  Search,
+  History
 } from 'lucide-react';
 
 interface BlogEditorClientProps {
@@ -28,32 +33,105 @@ interface BlogEditorClientProps {
   isEditing?: boolean;
 }
 
+function toInputDateFormat(dateStr?: string): string {
+  if (!dateStr) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const d = parseDate(dateStr);
+  if (isNaN(d.getTime())) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatHumanDate(dateStr?: string): string {
+  if (!dateStr) return 'Not selected';
+  const d = parseDate(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function isBackdated(dateStr?: string): boolean {
+  if (!dateStr) return false;
+  const d = parseDate(dateStr);
+  if (isNaN(d.getTime())) return false;
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return d.getTime() < todayStart.getTime();
+}
+
 export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorClientProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lastAutosave, setLastAutosave] = useState<string | null>(null);
 
   // Form State
   const [title, setTitle] = useState(initialPost?.title || '');
+  const [subtitle, setSubtitle] = useState(initialPost?.subtitle || '');
   const [slug, setSlug] = useState(initialPost?.slug || '');
-  const [category, setCategory] = useState<CategoryType>(initialPost?.category || 'Personal Finance');
-  const [tagsInput, setTagsInput] = useState(initialPost?.tags?.join(', ') || 'Focus, Systems');
-  const [coverImage, setCoverImage] = useState(initialPost?.coverImage || '/images/deep-work.svg');
+  const [category, setCategory] = useState<string>(initialPost?.category || 'Personal Finance');
+  const [subcategory, setSubcategory] = useState<string>(initialPost?.subcategory || '');
+  const [tagsInput, setTagsInput] = useState(initialPost?.tags?.join(', ') || 'Wealth, Discipline');
+  const [coverImage, setCoverImage] = useState(initialPost?.coverImage || '/images/financial-independence.svg');
+  const [coverCaption, setCoverCaption] = useState(initialPost?.coverCaption || '');
   const [excerpt, setExcerpt] = useState(initialPost?.excerpt || '');
   const [content, setContent] = useState(initialPost?.content || '');
   const [authorName, setAuthorName] = useState(initialPost?.author?.name || 'Gaurav Kumar Singh');
-  const [authorRole, setAuthorRole] = useState(initialPost?.author?.role || 'Founder & Author');
+  const [authorRole, setAuthorRole] = useState(initialPost?.author?.role || 'Founder & Managing Editor');
   const [authorAvatar, setAuthorAvatar] = useState(initialPost?.author?.avatar ?? '/images/gaurav-kumar-singh.jpg');
+  const [authorBio, setAuthorBio] = useState(initialPost?.author?.bio || 'Writer focused on personal finance systems, insurance awareness, and behavioural economics.');
   const [showAuthorPhoto, setShowAuthorPhoto] = useState(initialPost?.author?.showPhoto !== false);
-  const [status, setStatus] = useState<'published' | 'draft'>(initialPost?.status || 'published');
+  const [status, setStatus] = useState<ArticleStatus>(initialPost?.status || 'published');
   const [featured, setFeatured] = useState(Boolean(initialPost?.featured));
+  const [editorsPick, setEditorsPick] = useState(Boolean(initialPost?.editorsPick));
+  const [scheduledAt, setScheduledAt] = useState(initialPost?.scheduledAt || '');
+  const [publishedAt, setPublishedAt] = useState<string>(() => {
+    return toInputDateFormat(initialPost?.publishedAt);
+  });
+
+  // SEO
+  const [metaTitle, setMetaTitle] = useState(initialPost?.seo?.metaTitle || '');
+  const [metaDescription, setMetaDescription] = useState(initialPost?.seo?.metaDescription || '');
+
+  const handleQuickDate = (preset: 'today' | 'yesterday' | '2024' | '2023' | '2022' | '2021' | '2020') => {
+    const today = new Date();
+    if (preset === 'today') {
+      setPublishedAt(toInputDateFormat());
+    } else if (preset === 'yesterday') {
+      const y = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+      setPublishedAt(toInputDateFormat(y.toISOString()));
+    } else {
+      setPublishedAt(`${preset}-01-15`);
+    }
+  };
 
   useEffect(() => {
     setIsAuthenticated(ClientStorage.isAdminAuthenticated());
   }, []);
 
-  // Auto-generate slug from title if creating new
+  // Selected category info
+  const selectedCatObj = CATEGORIES.find(
+    (c) => c.name.toLowerCase() === category.toLowerCase()
+  );
+
+  // Auto-generate slug from title
   useEffect(() => {
     if (!isEditing && title) {
       const generated = title
@@ -111,21 +189,16 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
     }
   };
 
-  const handleDeleteAuthorAvatar = () => {
-    setAuthorAvatar('');
-    showToast('Author photo removed', 'info');
-  };
-
-  const handleSave = async (targetStatus?: 'published' | 'draft') => {
+  const handleSave = async (targetStatus?: ArticleStatus) => {
     if (!title.trim()) {
-      showToast('Please provide an article title', 'error');
+      showToast('Please provide an article title.', 'error');
       return;
     }
 
     setSaving(true);
     const finalStatus = targetStatus || status;
 
-    // Estimate reading time from word count
+    // Word count & reading time calculation
     const wordCount = content.replace(/<[^>]*>/g, '').split(/\s+/).filter(Boolean).length;
     const estMinutes = Math.max(1, Math.ceil(wordCount / 200));
     const readTime = `${estMinutes} min read`;
@@ -134,20 +207,32 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
 
     const postPayload: Partial<BlogPost> = {
       title,
+      subtitle: subtitle.trim() || undefined,
       slug: slug.trim(),
       category,
+      subcategory: subcategory.trim() || undefined,
       tags: tagsArray,
       coverImage,
+      coverCaption: coverCaption.trim() || undefined,
       excerpt,
       content,
       readTime,
       status: finalStatus,
       featured,
+      editorsPick,
+      publishedAt: formatDateDDMMYYYY(publishedAt),
+      scheduledAt: finalStatus === 'scheduled' ? scheduledAt : undefined,
       author: {
         name: authorName,
         avatar: authorAvatar,
         role: authorRole,
+        bio: authorBio,
         showPhoto: showAuthorPhoto,
+      },
+      seo: {
+        metaTitle: metaTitle.trim() || undefined,
+        metaDescription: metaDescription.trim() || undefined,
+        canonicalUrl: `https://themindupgrade.in/blog/${slug.trim()}`,
       },
     };
 
@@ -164,28 +249,17 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
       const data = await res.json();
 
       if (res.ok) {
-        if (!isEditing && finalStatus === 'published') {
-          const sentCount = data.notification?.sentCount || 'all';
-          showToast(
-            `New article published! Notification emails dispatched to ${sentCount} subscribers.`,
-            'success'
-          );
-        } else if (isEditing) {
-          showToast(
-            finalStatus === 'published'
-              ? 'Article updated successfully!'
-              : 'Draft updated successfully!',
-            'success'
-          );
-        } else {
-          showToast('Draft saved successfully!', 'info');
-        }
+        setLastAutosave(new Date().toLocaleTimeString());
+        showToast(
+          isEditing ? 'Article updated successfully!' : 'Article created successfully!',
+          'success'
+        );
         router.push('/admin');
       } else {
         showToast(data.error || 'Failed to save article', 'error');
       }
-    } catch (err) {
-      showToast('Error saving article', 'error');
+    } catch {
+      showToast('An error occurred while saving', 'error');
     } finally {
       setSaving(false);
     }
@@ -193,280 +267,461 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center p-4">
-        <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-4 max-w-sm shadow-xl">
-          <Lock className="w-8 h-8 text-indigo-600 dark:text-indigo-400 mx-auto" />
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Admin Access Required</h2>
-          <p className="text-xs text-slate-600 dark:text-slate-400">Please log in to the admin panel first.</p>
-          <Link
-            href="/admin"
-            className="inline-block px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/30"
-          >
-            Go to Admin Login
-          </Link>
-        </div>
+      <div className="container-custom py-20 text-center space-y-4">
+        <Lock className="w-12 h-12 text-amberBrand mx-auto" />
+        <h2 className="font-serif text-2xl font-bold text-navy-800 dark:text-offwhite">
+          Admin Authentication Required
+        </h2>
+        <p className="text-xs text-charcoal-500">
+          Please log into the Admin Portal before editing articles.
+        </p>
+        <Link
+          href="/admin"
+          className="inline-block px-5 py-2.5 rounded-xl bg-navy-800 text-white font-bold text-xs shadow-md"
+        >
+          Go to Admin Login &rarr;
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
-        <div>
+    <div className="container-custom py-8 space-y-6">
+      {/* Top Header & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-navy-700 pb-4">
+        <div className="flex items-center gap-3">
           <Link
             href="/admin"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-2 transition-colors"
+            className="p-2 rounded-xl bg-slate-100 dark:bg-navy-800 text-charcoal-700 dark:text-slate-300 hover:text-amberBrand transition-colors"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Dashboard</span>
+            <ArrowLeft className="w-4 h-4" />
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-            {isEditing ? 'Edit Article' : 'Create New Article'}
-          </h1>
+          <div>
+            <h1 className="font-serif text-xl sm:text-2xl font-bold text-navy-800 dark:text-offwhite">
+              {isEditing ? `Edit Article: ${title || 'Untitled'}` : 'Write New Publication'}
+            </h1>
+            <p className="text-xs text-charcoal-500 dark:text-slate-400">
+              {lastAutosave ? `Last saved at ${lastAutosave}` : 'Draft autosave enabled'}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => handleSave('draft')}
             disabled={saving}
-            className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors shadow-xs"
+            className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 text-charcoal-700 dark:text-slate-300 hover:bg-slate-200 text-xs font-bold transition-all cursor-pointer"
           >
-            <Save className="w-4 h-4" />
-            <span>Save Draft</span>
+            Save as Draft
           </button>
-
           <button
             onClick={() => handleSave('published')}
             disabled={saving}
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            className="px-5 py-2 rounded-xl bg-navy-800 hover:bg-navy-950 dark:bg-amberBrand dark:hover:bg-amberBrand/90 text-white dark:text-navy-950 font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-3.5 h-3.5" />
             <span>{saving ? 'Publishing...' : 'Publish Article'}</span>
           </button>
         </div>
       </div>
 
-      {/* Main Form Fields */}
-      <div className="space-y-6">
-
-        {/* Title */}
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-            Article Title *
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. The Science of Deep Work & Focus Protocols"
-            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 text-xl font-bold px-4 py-3.5 rounded-2xl focus:outline-none focus:border-indigo-500 shadow-xs"
-          />
-        </div>
-
-        {/* Slug & Category Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-              URL Slug
+      {/* Editor Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Main Writing Column (8 cols) */}
+        <div className="lg:col-span-8 space-y-5">
+          {/* Title */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slateBrand dark:text-slate-400 uppercase tracking-wider">
+              Article Headline *
             </label>
             <input
               type="text"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="article-url-slug"
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 text-sm font-mono px-4 py-3 rounded-xl focus:outline-none focus:border-indigo-500 shadow-xs"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. The 50/30/20 Rule: A Practical Guide to Building Long-Term Wealth"
+              className="w-full font-serif text-xl sm:text-2xl font-bold p-3.5 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-              Category
+          {/* Subtitle / Excerpt */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slateBrand dark:text-slate-400 uppercase tracking-wider">
+              Subtitle / Lead Excerpt
             </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as CategoryType)}
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-sm px-4 py-3 rounded-xl focus:outline-none focus:border-indigo-500 shadow-xs cursor-pointer"
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c.slug} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Tags & Featured Checkbox */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-              Tags (comma-separated)
-            </label>
-            <input
-              type="text"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="Deep Work, Focus, Productivity"
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 text-sm px-4 py-3 rounded-xl focus:outline-none focus:border-indigo-500 shadow-xs"
+            <textarea
+              rows={2}
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder="A concise, high-leverage summary that hooks thoughtful readers..."
+              className="w-full text-xs sm:text-sm p-3 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
             />
           </div>
 
-          <div className="pt-6">
-            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-              <input
-                type="checkbox"
-                checked={featured}
-                onChange={(e) => setFeatured(e.target.checked)}
-                className="w-4 h-4 accent-indigo-600 rounded"
-              />
-              <span className="text-xs font-bold text-slate-900 dark:text-white">Pin as Featured Article</span>
+          {/* Rich Content Editor */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slateBrand dark:text-slate-400 uppercase tracking-wider">
+              Publication Body (TipTap Rich Text)
             </label>
+            <TipTapEditor content={content} onChange={setContent} />
           </div>
-        </div>
 
-        {/* Cover Image Upload / Selection */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            Cover Image
-          </label>
-
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <div className="w-full sm:w-48 h-28 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 overflow-hidden relative shrink-0 flex items-center justify-center p-1">
-              <img src={coverImage} alt="Cover Preview" className="w-full h-full object-contain" />
+          {/* SEO Meta Box */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-3">
+            <div className="flex items-center gap-2 border-b border-slate-100 dark:border-navy-800 pb-2">
+              <Search className="w-4 h-4 text-amberBrand" />
+              <h3 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite">
+                Search Engine Optimization (SEO) Metadata
+              </h3>
             </div>
-
-            <div className="flex-1 space-y-3 w-full">
+            <div className="space-y-2">
               <input
                 type="text"
-                value={coverImage}
-                onChange={(e) => setCoverImage(e.target.value)}
-                placeholder="/images/deep-work.svg or https://..."
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-indigo-500 font-mono"
+                value={metaTitle}
+                onChange={(e) => setMetaTitle(e.target.value)}
+                placeholder="Custom SEO Title (defaults to article headline if empty)"
+                className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
               />
+              <textarea
+                rows={2}
+                value={metaDescription}
+                onChange={(e) => setMetaDescription(e.target.value)}
+                placeholder="Meta Description (150–160 characters for Google Search snippets)"
+                className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
+              />
+            </div>
+          </div>
+        </div>
 
-              <div className="flex items-center gap-2">
-                <label className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5 transition-colors">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Local Image</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleCoverUpload}
-                    className="hidden"
-                  />
+        {/* Sidebar Settings Column (4 cols) */}
+        <div className="lg:col-span-4 space-y-5">
+          
+          {/* Publication Status & Visibility */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-3 shadow-editorial">
+            <h3 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite border-b border-slate-100 dark:border-navy-800 pb-2">
+              Publishing Controls
+            </h3>
+            
+            <div className="space-y-2">
+              <div>
+                <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                  Article Status
                 </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as ArticleStatus)}
+                  className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-semibold text-navy-800 dark:text-offwhite"
+                >
+                  <option value="published">Published</option>
+                  <option value="draft">Draft</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="in_review">In Review</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
 
-                {/* Preset SVG Covers Selector */}
-                <div className="flex items-center gap-1">
-                  {[
-                    '/images/deep-work.svg',
-                    '/images/mental-models.svg',
-                    '/images/ai-creativity.svg',
-                    '/images/habits-neurobiology.svg',
-                    '/images/financial-independence.svg',
-                    '/images/stoicism.svg',
-                  ].map((presetPath, idx) => (
-                    <button
-                      key={presetPath}
-                      type="button"
-                      onClick={() => setCoverImage(presetPath)}
-                      className={`w-6 h-6 rounded-md border text-[9px] font-bold cursor-pointer transition-colors ${coverImage === presetPath
-                          ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300'
-                          : 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-500'
-                        }`}
-                      title={presetPath}
-                    >
-                      P{idx + 1}
-                    </button>
-                  ))}
+              {status === 'scheduled' && (
+                <div>
+                  <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                    Scheduled Publish Date &amp; Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={(e) => setScheduledAt(e.target.value)}
+                    className="w-full p-2 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs text-navy-800 dark:text-offwhite"
+                  />
                 </div>
+              )}
+
+              <div className="flex items-center gap-3 pt-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs">
+                  <input
+                    type="checkbox"
+                    checked={featured}
+                    onChange={(e) => setFeatured(e.target.checked)}
+                    className="rounded border-navy-700 text-amberBrand"
+                  />
+                  <span className="font-medium text-navy-800 dark:text-offwhite">Featured Article</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-xs">
+                  <input
+                    type="checkbox"
+                    checked={editorsPick}
+                    onChange={(e) => setEditorsPick(e.target.checked)}
+                    className="rounded border-navy-700 text-amberBrand"
+                  />
+                  <span className="font-medium text-navy-800 dark:text-offwhite">Editor&apos;s Pick</span>
+                </label>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Excerpt */}
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-            Excerpt / Meta Description
-          </label>
-          <textarea
-            rows={2}
-            value={excerpt}
-            onChange={(e) => setExcerpt(e.target.value)}
-            placeholder="A concise 1-2 sentence summary for social media & search engine previews..."
-            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 text-sm px-4 py-3 rounded-xl focus:outline-none focus:border-indigo-500 shadow-xs"
-          />
-        </div>
-
-        {/* Rich Text Editor */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            Article Content (Rich Text &amp; Formatting)
-          </label>
-          <TipTapEditor content={content} onChange={setContent} />
-        </div>
-
-        {/* Author Profile & Photo Settings */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-5 shadow-xs">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            Author Profile &amp; Photo Settings
-          </label>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                Author Name
-              </label>
-              <input
-                type="text"
-                value={authorName}
-                onChange={(e) => setAuthorName(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-sm px-4 py-2.5 rounded-xl focus:outline-none focus:border-indigo-500 font-medium"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                Author Role / Title
-              </label>
-              <input
-                type="text"
-                value={authorRole}
-                onChange={(e) => setAuthorRole(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-sm px-4 py-2.5 rounded-xl focus:outline-none focus:border-indigo-500 font-medium"
-              />
-            </div>
-          </div>
-
-          {/* Author Photo Upload & Delete Controls */}
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                {/* Photo Preview / Placeholder */}
-                <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-950 border-2 border-indigo-500/40 shrink-0 flex items-center justify-center shadow-xs">
-                  {authorAvatar ? (
-                    <img src={authorAvatar} alt="Author Preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-7 h-7 text-slate-400" />
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                    Author Profile Photo
-                  </span>
-                  <p className="text-[11px] text-slate-500">
-                    {authorAvatar ? 'Photo attached' : 'No photo attached'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Upload & Delete Buttons */}
+          {/* Manual Date & WordPress Backdating */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-3 shadow-editorial">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-navy-800 pb-2">
               <div className="flex items-center gap-2">
-                <label className="px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5 transition-colors">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>{authorAvatar ? 'Change Photo' : 'Upload Photo'}</span>
+                <Calendar className="w-4 h-4 text-amberBrand" />
+                <h3 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite">
+                  Publication Date
+                </h3>
+              </div>
+              {isBackdated(publishedAt) ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amberBrand/30 flex items-center gap-1">
+                  <Clock className="w-2.5 h-2.5" />
+                  <span>Backdated</span>
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300">
+                  Current
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                  Select or Enter Date
+                </label>
+                <input
+                  type="date"
+                  value={publishedAt}
+                  onChange={(e) => setPublishedAt(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-semibold text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand cursor-pointer"
+                />
+              </div>
+
+              {/* Formatted Date Preview */}
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-navy-950/70 border border-slate-100 dark:border-navy-800/80 text-xs flex items-center justify-between">
+                <span className="text-charcoal-500 dark:text-slate-400 text-[11px]">Displays on site:</span>
+                <span className="font-bold text-navy-800 dark:text-offwhite text-[11px]">
+                  {formatDate(publishedAt)}
+                </span>
+              </div>
+
+              {/* Quick Preset Buttons for Fast Backdating */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slateBrand dark:text-slate-400 block">
+                  Quick Presets:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate('today')}
+                    className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-navy-800 hover:bg-amberBrand hover:text-navy-950 text-charcoal-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate('yesterday')}
+                    className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-navy-800 hover:bg-amberBrand hover:text-navy-950 text-charcoal-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate('2024')}
+                    className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-navy-800 hover:bg-amberBrand hover:text-navy-950 text-charcoal-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    2024
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate('2023')}
+                    className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-navy-800 hover:bg-amberBrand hover:text-navy-950 text-charcoal-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    2023
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate('2022')}
+                    className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-navy-800 hover:bg-amberBrand hover:text-navy-950 text-charcoal-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    2022
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate('2021')}
+                    className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-navy-800 hover:bg-amberBrand hover:text-navy-950 text-charcoal-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    2021
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate('2020')}
+                    className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-navy-800 hover:bg-amberBrand hover:text-navy-950 text-charcoal-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    2020
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Taxonomy: Category & Subcategory */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-3 shadow-editorial">
+            <h3 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite border-b border-slate-100 dark:border-navy-800 pb-2">
+              Domain &amp; Taxonomy
+            </h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                  Primary Category
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    setSubcategory('');
+                  }}
+                  className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-semibold text-navy-800 dark:text-offwhite"
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat.slug} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedCatObj && selectedCatObj.subcategories.length > 0 && (
+                <div>
+                  <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                    Subcategory
+                  </label>
+                  <select
+                    value={subcategory}
+                    onChange={(e) => setSubcategory(e.target.value)}
+                    className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-semibold text-navy-800 dark:text-offwhite"
+                  >
+                    <option value="">Select Subcategory (Optional)</option>
+                    {selectedCatObj.subcategories.map((sub) => (
+                      <option key={sub.slug} value={sub.name}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={tagsInput}
+                  onChange={(e) => setTagsInput(e.target.value)}
+                  placeholder="Budgeting, Wealth, Mental Models"
+                  className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs text-navy-800 dark:text-offwhite"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                  URL Slug
+                </label>
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  className="w-full p-2 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-mono text-navy-800 dark:text-offwhite"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Cover Image */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-3 shadow-editorial">
+            <h3 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite border-b border-slate-100 dark:border-navy-800 pb-2">
+              Featured Media
+            </h3>
+
+            <div className="space-y-2">
+              <div className="h-36 rounded-xl overflow-hidden bg-slate-100 dark:bg-navy-950 border border-slate-200 dark:border-navy-800">
+                <img
+                  src={coverImage}
+                  alt="Cover preview"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <label className="flex items-center justify-center gap-1.5 p-2 rounded-lg border border-dashed border-slate-300 dark:border-navy-700 text-xs font-bold text-slateBrand hover:text-amberBrand cursor-pointer">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Upload New Cover Image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverUpload}
+                  className="hidden"
+                />
+              </label>
+              <input
+                type="text"
+                value={coverCaption}
+                onChange={(e) => setCoverCaption(e.target.value)}
+                placeholder="Optional image caption..."
+                className="w-full p-2 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-[11px] text-navy-800 dark:text-offwhite"
+              />
+            </div>
+          </div>
+
+          {/* Author & Bylines */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-3 shadow-editorial">
+            <div className="flex items-center gap-2 border-b border-slate-100 dark:border-navy-800 pb-2">
+              <User className="w-4 h-4 text-amberBrand" />
+              <h3 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite">
+                Author &amp; Bylines
+              </h3>
+            </div>
+            <div className="space-y-2.5">
+              <div>
+                <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                  Author Name
+                </label>
+                <input
+                  type="text"
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-semibold text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                  Author Role
+                </label>
+                <input
+                  type="text"
+                  value={authorRole}
+                  onChange={(e) => setAuthorRole(e.target.value)}
+                  className="w-full p-2 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                  Author Bio
+                </label>
+                <textarea
+                  rows={2}
+                  value={authorBio}
+                  onChange={(e) => setAuthorBio(e.target.value)}
+                  className="w-full p-2 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
+                />
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-xs">
+                  <input
+                    type="checkbox"
+                    checked={showAuthorPhoto}
+                    onChange={(e) => setShowAuthorPhoto(e.target.checked)}
+                    className="rounded border-navy-700 text-amberBrand"
+                  />
+                  <span className="font-medium text-navy-800 dark:text-offwhite">Show Photo</span>
+                </label>
+                <label className="text-[11px] font-bold text-amberBrand hover:underline cursor-pointer flex items-center gap-1">
+                  <Upload className="w-3 h-3" />
+                  <span>Upload Avatar</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -474,37 +729,10 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
                     className="hidden"
                   />
                 </label>
-
-                {authorAvatar && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteAuthorAvatar}
-                    className="px-3 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/80 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-                    title="Delete Author Photo"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Photo</span>
-                  </button>
-                )}
               </div>
             </div>
-
-            {/* Optional Visibility Toggle */}
-            <div className="pt-2">
-              <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
-                <input
-                  type="checkbox"
-                  checked={showAuthorPhoto}
-                  onChange={(e) => setShowAuthorPhoto(e.target.checked)}
-                  className="w-4 h-4 accent-indigo-600 rounded"
-                />
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  {showAuthorPhoto ? <Eye className="w-4 h-4 text-emerald-500" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
-                  <span>Show Photo of Author in Article Page &amp; Cards</span>
-                </div>
-              </label>
-            </div>
           </div>
+
         </div>
 
       </div>

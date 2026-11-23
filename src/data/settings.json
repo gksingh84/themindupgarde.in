@@ -1,0 +1,27 @@
+{
+  "siteName": "THE MIND UPGRADE",
+  "tagline": "Fresh Insights for a Smarter Life",
+  "description": "An independent digital publication exploring personal finance, insurance, psychology, economics, and practical everyday knowledge.",
+  "logoUrl": "/logo.png",
+  "faviconUrl": "/favicon.svg",
+  "contactEmail": "gaurav@themindupgrade.in",
+  "announcementBar": {
+    "enabled": true,
+    "text": "Upgrade your financial and mental models: Read our latest guide on Room Rent Sub-limits in Health Insurance",
+    "linkUrl": "/blog/ultimate-guide-health-insurance-india",
+    "badgeText": "New Guide"
+  },
+  "socialLinks": {
+    "twitter": "https://twitter.com",
+    "linkedin": "https://linkedin.com",
+    "github": "https://github.com",
+    "youtube": "https://youtube.com"
+  },
+  "seo": {
+    "defaultTitle": "The Mind Upgrade | Fresh Insights for a Smarter Life",
+    "defaultDescription": "Discover practical insights on money, psychology, economics and everyday life. Because better understanding leads to better decisions.",
+    "defaultOgImage": "/logo.png"
+  },
+  "enableComments": true,
+  "maintenanceMode": false
+}
