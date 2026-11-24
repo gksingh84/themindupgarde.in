@@ -75,6 +75,54 @@ function isBackdated(dateStr?: string): boolean {
   return d.getTime() < todayStart.getTime();
 }
 
+/**
+ * Resizes and compresses an image file to a lightweight data URL for instant preview and offline persistence.
+ */
+function optimizeImageFile(file: File, maxWidth = 1400, quality = 0.85): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (!result) {
+        resolve('');
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(result);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const format = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          const dataUrl = canvas.toDataURL(format, quality);
+          resolve(dataUrl);
+        } catch {
+          resolve(result);
+        }
+      };
+      img.onerror = () => resolve(result);
+      img.src = result;
+    };
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+}
+
 export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorClientProps) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -177,22 +225,33 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      showToast('Uploading cover image...', 'info');
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.url) {
-        setCoverImage(data.url);
+      showToast('Processing cover image...', 'info');
+      // 1. Immediately optimize image & update preview on client
+      const previewDataUrl = await optimizeImageFile(file, 1400, 0.85);
+      if (previewDataUrl) {
+        setCoverImage(previewDataUrl);
         showToast('Cover image updated!', 'success');
       }
+
+      // 2. Also send to /api/upload in background
+      const formData = new FormData();
+      formData.append('file', file);
+      fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.url) {
+            setCoverImage(data.url);
+          }
+        })
+        .catch(() => {});
     } catch {
-      showToast('Image upload failed', 'error');
+      showToast('Cover image updated locally!', 'success');
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -200,23 +259,32 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      showToast('Uploading author photo...', 'info');
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.url) {
-        setAuthorAvatar(data.url);
+      showToast('Processing author photo...', 'info');
+      const previewDataUrl = await optimizeImageFile(file, 400, 0.85);
+      if (previewDataUrl) {
+        setAuthorAvatar(previewDataUrl);
         setShowAuthorPhoto(true);
         showToast('Author photo updated!', 'success');
       }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.url) {
+            setAuthorAvatar(data.url);
+          }
+        })
+        .catch(() => {});
     } catch {
-      showToast('Photo upload failed', 'error');
+      showToast('Photo updated locally!', 'success');
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -685,21 +753,35 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
 
           {/* Cover Image */}
           <div className="p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-3 shadow-editorial">
-            <h3 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite border-b border-slate-100 dark:border-navy-800 pb-2">
-              Featured Media
-            </h3>
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-navy-800 pb-2">
+              <h3 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite">
+                Featured Cover Image
+              </h3>
+              <span className="text-[10px] text-charcoal-500 font-sans">JPG, PNG, WebP</span>
+            </div>
 
-            <div className="space-y-2">
-              <div className="h-36 rounded-xl overflow-hidden bg-slate-100 dark:bg-navy-950 border border-slate-200 dark:border-navy-800">
+            <div className="space-y-3">
+              {/* Preview */}
+              <div className="relative h-40 rounded-xl overflow-hidden bg-slate-100 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 group">
                 <img
                   src={coverImage}
                   alt="Cover preview"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/images/financial-independence.svg';
+                  }}
                 />
+                <div className="absolute inset-0 bg-navy-950/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="px-2.5 py-1 rounded-md bg-navy-900/80 text-white text-[11px] font-medium backdrop-blur-xs">
+                    Current Cover
+                  </span>
+                </div>
               </div>
-              <label className="flex items-center justify-center gap-1.5 p-2 rounded-lg border border-dashed border-slate-300 dark:border-navy-700 text-xs font-bold text-slateBrand hover:text-amberBrand cursor-pointer">
-                <Upload className="w-3.5 h-3.5" />
-                <span>Upload New Cover Image</span>
+
+              {/* Upload Button */}
+              <label className="flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 border-dashed border-amberBrand/50 hover:border-amberBrand bg-amberBrand/5 hover:bg-amberBrand/10 text-xs font-bold text-navy-800 dark:text-amberBrand transition-colors cursor-pointer shadow-xs">
+                <Upload className="w-4 h-4 text-amberBrand" />
+                <span>Upload Image from Device</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -707,13 +789,64 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
                   className="hidden"
                 />
               </label>
-              <input
-                type="text"
-                value={coverCaption}
-                onChange={(e) => setCoverCaption(e.target.value)}
-                placeholder="Optional image caption..."
-                className="w-full p-2 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-[11px] text-navy-800 dark:text-offwhite"
-              />
+
+              {/* Direct Image URL input */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slateBrand dark:text-slate-400 block mb-1">
+                  Or Paste Image URL
+                </label>
+                <input
+                  type="text"
+                  value={coverImage}
+                  onChange={(e) => setCoverImage(e.target.value)}
+                  placeholder="https://... or /images/..."
+                  className="w-full p-2 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-[11px] font-mono text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
+                />
+              </div>
+
+              {/* Quick Preset Illustrations */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slateBrand dark:text-slate-400 block mb-1">
+                  Quick Presets
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCoverImage('/images/financial-independence.svg')}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-navy-800 hover:border-amberBrand bg-slate-50 dark:bg-navy-950 text-[10px] font-medium text-navy-800 dark:text-slate-300 truncate transition-colors text-center cursor-pointer"
+                  >
+                    Finance
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCoverImage('/images/insurance-guide.svg')}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-navy-800 hover:border-amberBrand bg-slate-50 dark:bg-navy-950 text-[10px] font-medium text-navy-800 dark:text-slate-300 truncate transition-colors text-center cursor-pointer"
+                  >
+                    Insurance
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCoverImage('/images/second-order-thinking.svg')}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-navy-800 hover:border-amberBrand bg-slate-50 dark:bg-navy-950 text-[10px] font-medium text-navy-800 dark:text-slate-300 truncate transition-colors text-center cursor-pointer"
+                  >
+                    Psychology
+                  </button>
+                </div>
+              </div>
+
+              {/* Caption */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slateBrand dark:text-slate-400 block mb-1">
+                  Cover Caption
+                </label>
+                <input
+                  type="text"
+                  value={coverCaption}
+                  onChange={(e) => setCoverCaption(e.target.value)}
+                  placeholder="Optional image attribution or caption..."
+                  className="w-full p-2 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-[11px] text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
+                />
+              </div>
             </div>
           </div>
 
