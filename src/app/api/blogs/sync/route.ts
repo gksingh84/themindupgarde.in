@@ -60,6 +60,18 @@ export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
     const clientBlogs: BlogPost[] = body.blogs || [];
+    const creds = body.credentials;
+
+    // If client supplied credentials directly from Admin UI, configure runtime immediately
+    if (creds && creds.accessKeyId && creds.secretAccessKey) {
+      const { setDynamoRuntimeConfig } = await import('@/lib/dynamodb');
+      setDynamoRuntimeConfig({
+        tableName: creds.tableName,
+        region: creds.region,
+        accessKeyId: creds.accessKeyId,
+        secretAccessKey: creds.secretAccessKey,
+      });
+    }
 
     // Base blogs from server
     let blogsToSync: BlogPost[] = clientBlogs.length > 0 ? clientBlogs : getBlogsServer();
@@ -74,14 +86,14 @@ export async function POST(request: Request) {
           success: false,
           dynamoConfigured: false,
           error:
-            'DynamoDB credentials not detected yet on AWS Amplify. After adding environment variables in Amplify Console, you MUST trigger a redeploy (or click "Redeploy this version") for them to take effect!',
+            'DynamoDB credentials not detected yet on AWS Amplify. You can enter your credentials directly in the Admin DynamoDB dialog, or trigger a redeploy in AWS Amplify Console after adding environment variables.',
         },
         { status: 400 }
       );
     }
 
     // 3. Try saving to DynamoDB with detailed diagnostics
-    const result = await saveBlogsToDynamoDBDetailed(blogsToSync);
+    const result = await saveBlogsToDynamoDBDetailed(blogsToSync, creds);
     if (!result.success) {
       return NextResponse.json(
         {

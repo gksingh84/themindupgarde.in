@@ -220,4 +220,19 @@ export const ClientStorage = {
     localStorage.removeItem(DELETED_BLOGS_KEY);
     localStorage.removeItem(CUSTOM_BLOGS_KEY);
   },
+
+  // DynamoDB Direct Credentials (for seamless sync even before server redeploy)
+  getDynamoCreds(): { tableName: string; region: string; accessKeyId: string; secretAccessKey: string } | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const data = localStorage.getItem('tmu_dynamo_creds');
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  },
+  setDynamoCreds(creds: { tableName: string; region: string; accessKeyId: string; secretAccessKey: string }): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('tmu_dynamo_creds', JSON.stringify(creds));
+  },
 };

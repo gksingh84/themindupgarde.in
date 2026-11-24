@@ -20,7 +20,25 @@ function getEnvValue(keys: string[], fallback = ''): string {
   return fallback;
 }
 
+let runtimeConfig: {
+  tableName?: string;
+  region?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+} | null = null;
+
+export function setDynamoRuntimeConfig(config: {
+  tableName?: string;
+  region?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+}) {
+  runtimeConfig = { ...(runtimeConfig || {}), ...config };
+  docClientInstance = null; // Re-create client with new credentials
+}
+
 export function getDynamoTableName(): string {
+  if (runtimeConfig?.tableName) return runtimeConfig.tableName;
   return getEnvValue(
     ['DYNAMODB_TABLE_NAME', 'TMU_DYNAMODB_TABLE_NAME', 'DYNAMO_TABLE_NAME'],
     'tmu_blogs'
@@ -28,6 +46,7 @@ export function getDynamoTableName(): string {
 }
 
 export function getDynamoRegion(): string {
+  if (runtimeConfig?.region) return runtimeConfig.region;
   return getEnvValue(
     [
       'APP_AWS_REGION',
@@ -41,6 +60,7 @@ export function getDynamoRegion(): string {
 }
 
 export function getDynamoAccessKeyId(): string {
+  if (runtimeConfig?.accessKeyId) return runtimeConfig.accessKeyId;
   return getEnvValue([
     'APP_AWS_ACCESS_KEY_ID',
     'MY_AWS_ACCESS_KEY_ID',
@@ -50,6 +70,7 @@ export function getDynamoAccessKeyId(): string {
 }
 
 export function getDynamoSecretAccessKey(): string {
+  if (runtimeConfig?.secretAccessKey) return runtimeConfig.secretAccessKey;
   return getEnvValue([
     'APP_AWS_SECRET_ACCESS_KEY',
     'MY_AWS_SECRET_ACCESS_KEY',
@@ -212,8 +233,17 @@ export async function deleteBlogFromDynamoDB(id: string): Promise<boolean> {
  * Put each blog individually into AWS DynamoDB with detailed error diagnostics.
  */
 export async function saveBlogsToDynamoDBDetailed(
-  blogs: BlogPost[]
+  blogs: BlogPost[],
+  overrideConfig?: {
+    tableName?: string;
+    region?: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+  }
 ): Promise<{ success: boolean; error?: string; savedCount?: number }> {
+  if (overrideConfig?.accessKeyId && overrideConfig?.secretAccessKey) {
+    setDynamoRuntimeConfig(overrideConfig);
+  }
   if (!isDynamoDBConfigured()) {
     return {
       success: false,

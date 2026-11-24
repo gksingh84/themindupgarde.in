@@ -42,6 +42,7 @@ import {
   Cloud
 } from 'lucide-react';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
+import { DynamoDBSetupModal } from '@/components/DynamoDBSetupModal';
 
 interface AdminDashboardClientProps {
   initialBlogs: BlogPost[];
@@ -71,6 +72,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
   // AWS DynamoDB Cloud DB State
   const [dynamoConfigured, setDynamoConfigured] = useState<boolean | null>(null);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [isDynamoModalOpen, setIsDynamoModalOpen] = useState(false);
 
   const { showToast } = useToast();
 
@@ -286,12 +288,18 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
 
   // Sync articles to AWS DynamoDB Free Cloud Database
   const handleSyncToCloud = async () => {
+    const stored = ClientStorage.getDynamoCreds();
+    if (!dynamoConfigured && !stored) {
+      setIsDynamoModalOpen(true);
+      return;
+    }
+
     setIsSyncingCloud(true);
     try {
       const res = await fetch('/api/blogs/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blogs }),
+        body: JSON.stringify({ blogs, credentials: stored || undefined }),
       });
       const result = await res.json();
       if (res.ok && result.success) {
@@ -299,7 +307,11 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
         showToast(result.message || 'Synced to AWS DynamoDB successfully!', 'success');
       } else {
         setDynamoConfigured(Boolean(result.dynamoConfigured));
-        showToast(result.error || result.message || 'Sync failed', 'error');
+        if (result.error && (result.error.includes('credentials') || result.error.includes('not detected'))) {
+          setIsDynamoModalOpen(true);
+        } else {
+          showToast(result.error || result.message || 'Sync failed', 'error');
+        }
       }
     } catch {
       showToast('Failed to connect to sync endpoint', 'error');
@@ -473,13 +485,15 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                 </span>
               )}
               {dynamoConfigured === false && (
-                <span
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                  title="DynamoDB credentials pending in AWS Amplify Console environment variables"
+                <button
+                  type="button"
+                  onClick={() => setIsDynamoModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors cursor-pointer"
+                  title="Click to enter AWS credentials and connect DynamoDB"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                  Cloud DB: Setup Pending
-                </span>
+                  Cloud DB: Setup Pending (Click to Connect)
+                </button>
               )}
             </div>
           </div>
@@ -1243,6 +1257,16 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
           setIsDefaultPassword(false);
           showToast('Password updated! Please use your new password next time you sign in.', 'success');
         }}
+      />
+
+      {/* AWS DynamoDB Setup Modal */}
+      <DynamoDBSetupModal
+        isOpen={isDynamoModalOpen}
+        onClose={() => setIsDynamoModalOpen(false)}
+        onSynced={() => {
+          setDynamoConfigured(true);
+        }}
+        blogs={blogs}
       />
 
     </div>
