@@ -321,11 +321,16 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
     const matchesSearch =
       b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.author.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.category.toLowerCase().includes(searchQuery.toLowerCase());
+      b.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (b.subcategory && b.subcategory.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (b.tags && b.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
     const matchesStatus =
       statusFilter === 'all' ? true : b.status === statusFilter;
     const matchesCategory =
-      categoryFilter === 'all' ? true : b.category.toLowerCase() === categoryFilter.toLowerCase();
+      categoryFilter === 'all'
+        ? true
+        : b.category.trim().toLowerCase() === categoryFilter.trim().toLowerCase() ||
+          b.category.toLowerCase().replace(/[\s_]+/g, '-') === categoryFilter.toLowerCase().replace(/[\s_]+/g, '-');
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
@@ -688,8 +693,14 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                           </div>
                         </td>
                         <td className="p-4">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slateBrand/10 text-slateBrand dark:bg-navy-800 dark:text-amberBrand whitespace-nowrap">
-                            {blog.category}
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slateBrand/10 text-slateBrand dark:bg-navy-800 dark:text-amberBrand whitespace-nowrap inline-flex items-center gap-1">
+                            <span>{blog.category}</span>
+                            {blog.subcategory && (
+                              <>
+                                <span className="opacity-50">•</span>
+                                <span className="text-amberBrand">{blog.subcategory}</span>
+                              </>
+                            )}
                           </span>
                         </td>
                         <td className="p-4">

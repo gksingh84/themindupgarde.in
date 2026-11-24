@@ -387,13 +387,18 @@ export function BlogPostClientView({
           <div className="flex items-center gap-1.5 flex-wrap">
             <Link href="/" className="hover:text-amberBrand transition-colors">Home</Link>
             <span>/</span>
-            <Link href={`/categories/${post.category.toLowerCase().replace(/\s+/g, '-')}`} className="hover:text-amberBrand transition-colors">
+            <Link href={`/categories/${post.category.toLowerCase().replace(/[\s_]+/g, '-')}`} className="hover:text-amberBrand transition-colors">
               {post.category}
             </Link>
             {post.subcategory && (
               <>
                 <span>/</span>
-                <span className="text-navy-800 dark:text-slate-200 font-medium">{post.subcategory}</span>
+                <Link
+                  href={`/categories/${post.category.toLowerCase().replace(/[\s_]+/g, '-')}?sub=${post.subcategory.toLowerCase().replace(/[\s_]+/g, '-')}`}
+                  className="text-navy-800 dark:text-slate-200 font-medium hover:text-amberBrand transition-colors"
+                >
+                  {post.subcategory}
+                </Link>
               </>
             )}
           </div>
@@ -411,11 +416,21 @@ export function BlogPostClientView({
         <header className="space-y-4 max-w-4xl mx-auto text-center">
           
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slateBrand/10 text-slateBrand dark:text-amberBrand text-xs font-bold uppercase tracking-wider">
-            <span>{post.category}</span>
+            <Link
+              href={`/categories/${post.category.toLowerCase().replace(/[\s_]+/g, '-')}`}
+              className="hover:underline"
+            >
+              {post.category}
+            </Link>
             {post.subcategory && (
               <>
                 <span>•</span>
-                <span>{post.subcategory}</span>
+                <Link
+                  href={`/categories/${post.category.toLowerCase().replace(/[\s_]+/g, '-')}?sub=${post.subcategory.toLowerCase().replace(/[\s_]+/g, '-')}`}
+                  className="hover:underline"
+                >
+                  {post.subcategory}
+                </Link>
               </>
             )}
           </div>

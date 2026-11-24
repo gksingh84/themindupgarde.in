@@ -41,15 +41,20 @@ export async function POST(request: Request) {
       id: newBlog.id || String(Date.now()),
       slug: newBlog.slug || (newBlog.title ? newBlog.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : `post-${Date.now()}`),
       title: newBlog.title || 'Untitled Post',
+      subtitle: newBlog.subtitle?.trim() || undefined,
       excerpt: newBlog.excerpt || '',
       content: newBlog.content || '',
       category: newBlog.category || 'Personal Finance',
+      subcategory: newBlog.subcategory?.trim() || undefined,
       tags: newBlog.tags || [],
       coverImage: newBlog.coverImage || '/images/deep-work.svg',
+      coverCaption: newBlog.coverCaption?.trim() || undefined,
       publishedAt: newBlog.publishedAt ? formatDateDDMMYYYY(newBlog.publishedAt) : formatDateDDMMYYYY(new Date()),
       readTime: newBlog.readTime || '5 min read',
       status: newBlog.status || 'published',
       featured: Boolean(newBlog.featured),
+      editorsPick: Boolean(newBlog.editorsPick),
+      scheduledAt: newBlog.scheduledAt || undefined,
       views: 0,
       likes: 0,
       author: newBlog.author || {
@@ -57,6 +62,7 @@ export async function POST(request: Request) {
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MindUpgrade',
         role: 'Editorial Team',
       },
+      seo: newBlog.seo || undefined,
     };
 
     // Check slug collision

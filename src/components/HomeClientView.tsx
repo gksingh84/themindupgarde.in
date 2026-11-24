@@ -74,10 +74,21 @@ export function HomeClientView({
     }
   };
 
+  // Robust category matching
+  const isCategoryMatch = (blogCat: string | undefined, targetCat: string) => {
+    if (!blogCat || !targetCat) return false;
+    const b = blogCat.trim().toLowerCase();
+    const t = targetCat.trim().toLowerCase();
+    if (b === t) return true;
+    const bSlug = b.replace(/[\s_]+/g, '-');
+    const tSlug = t.replace(/[\s_]+/g, '-');
+    return bSlug === tSlug;
+  };
+
   // Filtered by selected category pill
   const filteredBlogs = blogs.filter((b) => {
     if (selectedCategory === 'All') return true;
-    return b.category.toLowerCase() === selectedCategory.toLowerCase();
+    return isCategoryMatch(b.category, selectedCategory);
   });
 
   const visibleBlogs = filteredBlogs.slice(0, visibleCount);
@@ -85,7 +96,7 @@ export function HomeClientView({
 
   // Category counts
   const getCategoryCount = (catName: string) => {
-    return blogs.filter((b) => b.category.toLowerCase() === catName.toLowerCase()).length;
+    return blogs.filter((b) => isCategoryMatch(b.category, catName)).length;
   };
 
   // Featured grid posts (excluding hero if possible, up to 3)
