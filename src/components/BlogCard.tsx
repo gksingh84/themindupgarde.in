@@ -21,6 +21,11 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const { showToast } = useToast();
 
+  const briefIntroduction =
+    post.subtitle?.trim() ||
+    post.excerpt?.trim() ||
+    (post.content ? post.content.replace(/<[^>]*>/g, '').trim().slice(0, 160) + '...' : '');
+
   useEffect(() => {
     setIsBookmarked(ClientStorage.isBookmarked(post.slug));
     setHasLiked(ClientStorage.isLiked(post.slug));
@@ -114,21 +119,11 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
               </h2>
             </Link>
 
-            {post.subtitle && (
-              <p className="text-xs sm:text-sm font-medium text-slateBrand dark:text-slate-300 italic">
-                {post.subtitle}
+            {briefIntroduction && (
+              <p className="text-xs sm:text-sm font-normal text-charcoal-600 dark:text-slate-300 italic line-clamp-3 leading-relaxed">
+                {briefIntroduction}
               </p>
             )}
-
-            {(post.excerpt && post.excerpt !== post.subtitle) ? (
-              <p className="text-charcoal-700 dark:text-slate-300 text-sm line-clamp-3 leading-relaxed">
-                {post.excerpt}
-              </p>
-            ) : (!post.subtitle && post.excerpt) ? (
-              <p className="text-charcoal-700 dark:text-slate-300 text-sm line-clamp-3 leading-relaxed">
-                {post.excerpt}
-              </p>
-            ) : null}
           </div>
 
           <div className="pt-6 border-t border-slate-200 dark:border-navy-800 flex items-center justify-between gap-3">
@@ -264,21 +259,11 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
             </h3>
           </Link>
 
-          {post.subtitle && (
-            <p className="text-xs font-medium text-slateBrand dark:text-slate-300 italic line-clamp-2">
-              {post.subtitle}
+          {briefIntroduction && (
+            <p className="text-xs sm:text-sm font-normal text-charcoal-600 dark:text-slate-300 italic line-clamp-2 sm:line-clamp-3 leading-relaxed">
+              {briefIntroduction}
             </p>
           )}
-
-          {(post.excerpt && post.excerpt !== post.subtitle) ? (
-            <p className="text-charcoal-700 dark:text-slate-300 text-xs sm:text-sm line-clamp-3 leading-relaxed">
-              {post.excerpt}
-            </p>
-          ) : (!post.subtitle && post.excerpt) ? (
-            <p className="text-charcoal-700 dark:text-slate-300 text-xs sm:text-sm line-clamp-3 leading-relaxed">
-              {post.excerpt}
-            </p>
-          ) : null}
         </div>
       </div>
 
