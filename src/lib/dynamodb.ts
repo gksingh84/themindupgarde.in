@@ -8,6 +8,11 @@ import {
   BatchWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { BlogPost } from '@/types/blog';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+const DYNAMO_CONFIG_FILE = path.join(os.tmpdir(), 'tmu_dynamo_config.json');
 
 // Helper to check multiple environment variable aliases (Amplify blocks variables starting with "AWS_")
 function getEnvValue(keys: string[], fallback = ''): string {
@@ -27,6 +32,19 @@ let runtimeConfig: {
   secretAccessKey?: string;
 } | null = null;
 
+function loadDiskConfig() {
+  if (runtimeConfig?.accessKeyId && runtimeConfig?.secretAccessKey) return;
+  try {
+    if (fs.existsSync(DYNAMO_CONFIG_FILE)) {
+      const raw = fs.readFileSync(DYNAMO_CONFIG_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.accessKeyId) {
+        runtimeConfig = { ...(runtimeConfig || {}), ...parsed };
+      }
+    }
+  } catch {}
+}
+
 export function setDynamoRuntimeConfig(config: {
   tableName?: string;
   region?: string;
@@ -35,9 +53,13 @@ export function setDynamoRuntimeConfig(config: {
 }) {
   runtimeConfig = { ...(runtimeConfig || {}), ...config };
   docClientInstance = null; // Re-create client with new credentials
+  try {
+    fs.writeFileSync(DYNAMO_CONFIG_FILE, JSON.stringify(runtimeConfig), 'utf-8');
+  } catch {}
 }
 
 export function getDynamoTableName(): string {
+  loadDiskConfig();
   if (runtimeConfig?.tableName) return runtimeConfig.tableName;
   return getEnvValue(
     ['DYNAMODB_TABLE_NAME', 'TMU_DYNAMODB_TABLE_NAME', 'DYNAMO_TABLE_NAME'],
@@ -46,6 +68,7 @@ export function getDynamoTableName(): string {
 }
 
 export function getDynamoRegion(): string {
+  loadDiskConfig();
   if (runtimeConfig?.region) return runtimeConfig.region;
   return getEnvValue(
     [
@@ -60,6 +83,7 @@ export function getDynamoRegion(): string {
 }
 
 export function getDynamoAccessKeyId(): string {
+  loadDiskConfig();
   if (runtimeConfig?.accessKeyId) return runtimeConfig.accessKeyId;
   return getEnvValue([
     'APP_AWS_ACCESS_KEY_ID',
@@ -70,6 +94,7 @@ export function getDynamoAccessKeyId(): string {
 }
 
 export function getDynamoSecretAccessKey(): string {
+  loadDiskConfig();
   if (runtimeConfig?.secretAccessKey) return runtimeConfig.secretAccessKey;
   return getEnvValue([
     'APP_AWS_SECRET_ACCESS_KEY',
@@ -82,6 +107,7 @@ export function getDynamoSecretAccessKey(): string {
 let docClientInstance: DynamoDBDocumentClient | null = null;
 
 export function isDynamoDBConfigured(): boolean {
+  loadDiskConfig();
   const hasTable = Boolean(getDynamoTableName());
   const hasExplicitCreds = Boolean(
     getDynamoAccessKeyId() && getDynamoSecretAccessKey()

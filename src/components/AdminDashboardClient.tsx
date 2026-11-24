@@ -81,22 +81,27 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
     const merged = ClientStorage.getMergedBlogs(initialBlogs);
     setBlogs(merged);
 
-    // Check AWS DynamoDB cloud database status and fetch fresh blogs
-    fetch('/api/blogs/sync')
+    const storedCreds = ClientStorage.getDynamoCreds();
+    const reqHeaders: Record<string, string> = {};
+    if (storedCreds) {
+      reqHeaders['x-dynamo-creds'] = JSON.stringify(storedCreds);
+    }
+
+    // Always fetch fresh blogs from DynamoDB via /api/blogs
+    fetch('/api/blogs?includeDrafts=true', { headers: reqHeaders })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((fresh) => {
+        if (Array.isArray(fresh) && fresh.length > 0) {
+          setBlogs(fresh);
+        }
+      })
+      .catch(() => {});
+
+    // Check AWS DynamoDB cloud database status
+    fetch('/api/blogs/sync', { headers: reqHeaders })
       .then((r) => r.json())
       .then((d) => {
         setDynamoConfigured(Boolean(d.configured));
-        if (d.configured) {
-          fetch('/api/blogs?includeDrafts=true')
-            .then((r) => r.json())
-            .then((fresh) => {
-              if (Array.isArray(fresh) && fresh.length > 0) {
-                const freshMerged = ClientStorage.getMergedBlogs(fresh);
-                setBlogs(freshMerged);
-              }
-            })
-            .catch(() => {});
-        }
       })
       .catch(() => {});
 

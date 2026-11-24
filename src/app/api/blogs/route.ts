@@ -4,6 +4,18 @@ import { BlogPost } from '@/types/blog';
 import { formatDateDDMMYYYY, parseDate } from '@/lib/date-utils';
 
 export async function GET(request: Request) {
+  // If client provided credentials in header, configure runtime
+  const credsHeader = request.headers.get('x-dynamo-creds');
+  if (credsHeader) {
+    try {
+      const parsed = JSON.parse(credsHeader);
+      if (parsed && parsed.accessKeyId) {
+        const { setDynamoRuntimeConfig } = await import('@/lib/dynamodb');
+        setDynamoRuntimeConfig(parsed);
+      }
+    } catch {}
+  }
+
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
   const search = searchParams.get('search');
