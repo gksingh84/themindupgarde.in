@@ -1,12 +1,25 @@
 import React from 'react';
-import { getBlogsServerAsync } from '@/lib/blog-service';
+import { getBlogsServerAsync, getBlogsServer } from '@/lib/blog-service';
 import { BlogEditorClient } from '@/components/BlogEditorClient';
+import { BlogPost } from '@/types/blog';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const decodedId = decodeURIComponent(id || '').trim();
-    const blogs = await getBlogsServerAsync();
+    let decodedId = '';
+    try {
+      decodedId = decodeURIComponent(id || '').trim();
+    } catch {
+      decodedId = (id || '').trim();
+    }
+
+    let blogs: BlogPost[] = [];
+    try {
+      blogs = await getBlogsServerAsync();
+    } catch {
+      blogs = getBlogsServer();
+    }
+
     const blog = blogs.find(
       (b) =>
         b.id === decodedId ||
@@ -20,16 +33,35 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function EditBlogPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const decodedId = decodeURIComponent(id || '').trim();
-  const blogs = await getBlogsServerAsync();
-  const blog =
-    blogs.find(
-      (b) =>
-        b.id === decodedId ||
-        (b.slug && b.slug.toLowerCase() === decodedId.toLowerCase()) ||
-        (b.id === '7' && (decodedId === '7' || decodedId.includes('checklist') || decodedId.includes('pure-term')))
-    ) || null;
+  let decodedId = '';
+  let blog: BlogPost | null = null;
+
+  try {
+    const resolvedParams = await params;
+    const rawId = resolvedParams?.id || '';
+    try {
+      decodedId = decodeURIComponent(rawId).trim();
+    } catch {
+      decodedId = rawId.trim();
+    }
+
+    let blogs: BlogPost[] = [];
+    try {
+      blogs = await getBlogsServerAsync();
+    } catch {
+      blogs = getBlogsServer();
+    }
+
+    blog =
+      blogs.find(
+        (b) =>
+          b.id === decodedId ||
+          (b.slug && b.slug.toLowerCase() === decodedId.toLowerCase()) ||
+          (b.id === '7' && (decodedId === '7' || decodedId.includes('checklist') || decodedId.includes('pure-term')))
+      ) || null;
+  } catch (err) {
+    console.warn('EditBlogPage params resolution notice:', err);
+  }
 
   return <BlogEditorClient initialPost={blog} isEditing={true} postId={decodedId} />;
 }

@@ -29,6 +29,16 @@ export default function RootError({
           <p className="text-xs sm:text-sm text-charcoal-600 dark:text-slate-400 leading-relaxed">
             We encountered a temporary issue while loading this page. You can try refreshing the view or return to the main publication.
           </p>
+          {error?.message && (
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-left">
+              <span className="text-[10px] font-bold text-slateBrand block uppercase tracking-wider mb-1">
+                Details:
+              </span>
+              <p className="text-xs font-mono text-rose-500 break-words line-clamp-3">
+                {error.message}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-center gap-3 pt-2">

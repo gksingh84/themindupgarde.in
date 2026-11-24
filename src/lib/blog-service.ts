@@ -65,16 +65,16 @@ export async function getBlogsServerAsync(forceRefresh = false): Promise<BlogPos
         }
 
         return processed;
-      } else {
-        // Table exists but is empty -> Auto-seed with local blogs
+      } else if (dynamoBlogs && dynamoBlogs.length === 0) {
+        // Table exists and was scanned, but has 0 items -> Auto-seed with local blogs
         const local = getBlogsServer();
-        seedDynamoDBIfEmpty(local).catch((e) => console.warn('Auto-seed DynamoDB warning:', e));
+        seedDynamoDBIfEmpty(local).catch(() => {});
         cachedBlogs = local;
         lastCacheTime = now;
         return local;
       }
-    } catch (err) {
-      console.warn('DynamoDB read warning, falling back to JSON:', err);
+    } catch {
+      // DynamoDB not ready or error -> continue to fallback smoothly
     }
   }
 

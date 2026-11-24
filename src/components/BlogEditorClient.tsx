@@ -137,7 +137,12 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
   const [slug, setSlug] = useState(initialPost?.slug || '');
   const [category, setCategory] = useState<string>(initialPost?.category || 'Personal Finance');
   const [subcategory, setSubcategory] = useState<string>(initialPost?.subcategory || '');
-  const [tagsInput, setTagsInput] = useState(initialPost?.tags?.join(', ') || 'Wealth, Discipline');
+  const initialTags = Array.isArray(initialPost?.tags)
+    ? initialPost.tags.join(', ')
+    : typeof initialPost?.tags === 'string'
+      ? initialPost.tags
+      : 'Wealth, Discipline';
+  const [tagsInput, setTagsInput] = useState(initialTags);
   const [coverImage, setCoverImage] = useState(initialPost?.coverImage || '/images/financial-independence.svg');
   const [coverCaption, setCoverCaption] = useState(initialPost?.coverCaption || '');
   const [excerpt, setExcerpt] = useState(initialPost?.excerpt || '');
@@ -183,12 +188,17 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
       setSlug(post.slug || '');
       setCategory(post.category || 'Personal Finance');
       setSubcategory(post.subcategory || '');
-      setTagsInput(post.tags?.join(', ') || '');
+      const postTags = Array.isArray(post.tags)
+        ? post.tags.join(', ')
+        : typeof post.tags === 'string'
+          ? post.tags
+          : '';
+      setTagsInput(postTags);
       setCoverImage(post.coverImage || '/images/financial-independence.svg');
       setCoverCaption(post.coverCaption || '');
       setExcerpt(post.excerpt || '');
       setContent(post.content || '');
-      if (post.author) {
+      if (post.author && typeof post.author === 'object') {
         setAuthorName(post.author.name || 'Gaurav Kumar Singh');
         setAuthorRole(post.author.role || 'Founder & Managing Editor');
         setAuthorAvatar(post.author.avatar || '/images/gaurav-kumar-singh.jpg');
@@ -200,7 +210,7 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
       setEditorsPick(Boolean(post.editorsPick));
       if (post.publishedAt) setPublishedAt(toInputDateFormat(post.publishedAt));
       if (post.scheduledAt) setScheduledAt(post.scheduledAt);
-      if (post.seo) {
+      if (post.seo && typeof post.seo === 'object') {
         setMetaTitle(post.seo.metaTitle || '');
         setMetaDescription(post.seo.metaDescription || '');
       }
@@ -209,7 +219,7 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
 
   // Selected category info
   const selectedCatObj = CATEGORIES.find(
-    (c) => c.name.toLowerCase() === category.toLowerCase()
+    (c) => c.name.toLowerCase() === (category || '').toLowerCase()
   );
 
   // Auto-generate slug from title

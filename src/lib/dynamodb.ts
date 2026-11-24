@@ -65,11 +65,8 @@ export function isDynamoDBConfigured(): boolean {
   const hasExplicitCreds = Boolean(
     getDynamoAccessKeyId() && getDynamoSecretAccessKey()
   );
-  const isAwsLambda = Boolean(
-    process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.AWS_EXECUTION_ENV
-  );
 
-  return hasTable && (hasExplicitCreds || isAwsLambda);
+  return hasTable && hasExplicitCreds;
 }
 
 export function getDynamoDBClient(): DynamoDBDocumentClient {
@@ -104,10 +101,10 @@ export function getDynamoDBClient(): DynamoDBDocumentClient {
 }
 
 /**
- * Fetch all blogs from AWS DynamoDB.
+ * Fetch all blogs from AWS DynamoDB (returns null on connection error so caller falls back gracefully).
  */
-export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[]> {
-  if (!isDynamoDBConfigured()) return [];
+export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[] | null> {
+  if (!isDynamoDBConfigured()) return null;
 
   try {
     const client = getDynamoDBClient();
@@ -116,14 +113,14 @@ export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[]> {
     });
     const response = await client.send(command);
 
-    if (!response.Items || response.Items.length === 0) {
+    if (!response.Items) {
       return [];
     }
 
     return response.Items as BlogPost[];
   } catch (error) {
-    console.error('DynamoDB Scan Error:', error);
-    return [];
+    console.warn('DynamoDB Scan Notice (will use local fallback):', error);
+    return null;
   }
 }
 
@@ -257,13 +254,13 @@ export async function seedDynamoDBIfEmpty(seedBlogs: BlogPost[]): Promise<boolea
 
   try {
     const existing = await getAllBlogsFromDynamoDB();
-    if (existing.length === 0) {
+    if (existing !== null && existing.length === 0) {
       console.log(`DynamoDB table ${getDynamoTableName()} is empty. Seeding ${seedBlogs.length} initial blogs...`);
       return await saveBlogsBatchToDynamoDB(seedBlogs);
     }
-    return true;
+    return Boolean(existing && existing.length > 0);
   } catch (error) {
-    console.error('DynamoDB seed error:', error);
+    console.warn('DynamoDB seed notice:', error);
     return false;
   }
 }
