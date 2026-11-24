@@ -289,14 +289,6 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
     },
   });
 
-  if (!editor) {
-    return (
-      <div className="h-64 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500">
-        Loading Rich Text Editor...
-      </div>
-    );
-  }
-
   const setLink = () => {
     const previousUrl = editor.getAttributes('link').href;
     const url = window.prompt('Enter URL:', previousUrl);
@@ -655,6 +647,14 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
       window.removeEventListener('mouseup', onMouseUp);
     };
   }, [editor, applyRowToAll]);
+
+  if (!editor) {
+    return (
+      <div className="h-64 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500">
+        Loading Rich Text Editor...
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 overflow-hidden shadow-sm flex flex-col h-[650px] sm:h-[720px] max-h-[82vh]">
