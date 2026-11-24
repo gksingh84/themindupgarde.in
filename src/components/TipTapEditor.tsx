@@ -7,6 +7,7 @@ import LinkExtension from '@tiptap/extension-link';
 import ImageExtension from '@tiptap/extension-image';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
+import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import { Node, Extension, mergeAttributes } from '@tiptap/core';
 
 import {
@@ -36,6 +37,13 @@ import {
   Lightbulb,
   Sparkles,
   ChevronDown,
+  Table as TableIcon,
+  Plus,
+  Trash2,
+  ArrowUpDown,
+  ArrowLeftRight,
+  Grid3X3,
+  Sliders,
 } from 'lucide-react';
 
 // Custom TipTap Callout Node for editorial Tip, Warning, and Key Insight cards
@@ -172,6 +180,39 @@ const IndentExtension = Extension.create({
   },
 });
 
+// Custom TableCell and TableHeader allowing custom inline styles (height, padding, width)
+const CustomTableCell = TableCell.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('style'),
+        renderHTML: (attributes) => {
+          if (!attributes.style) return {};
+          return { style: attributes.style };
+        },
+      },
+    };
+  },
+});
+
+const CustomTableHeader = TableHeader.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('style'),
+        renderHTML: (attributes) => {
+          if (!attributes.style) return {};
+          return { style: attributes.style };
+        },
+      },
+    };
+  },
+});
+
 interface TipTapEditorProps {
   content: string;
   onChange: (html: string) => void;
@@ -183,12 +224,29 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
   const [showCardsMenu, setShowCardsMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // Table Controls State
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [tableRows, setTableRows] = useState(3);
+  const [tableCols, setTableCols] = useState(3);
+  const [tableHeader, setTableHeader] = useState(true);
+  const [showRowHeightMenu, setShowRowHeightMenu] = useState(false);
+  const [showColWidthMenu, setShowColWidthMenu] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
       Callout,
       IndentExtension,
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: 'editorial-table',
+        },
+      }),
+      TableRow,
+      CustomTableHeader,
+      CustomTableCell,
       LinkExtension.configure({
         openOnClick: false,
       }),
@@ -340,6 +398,78 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
         .updateAttributes('blockquote', { indent: currentIndent - 1 })
         .run();
     }
+  };
+
+  const insertTable = (r?: number, c?: number, withHeader = true) => {
+    const rows = r ?? Math.max(1, Math.min(tableRows, 50));
+    const cols = c ?? Math.max(1, Math.min(tableCols, 20));
+    editor
+      .chain()
+      .focus()
+      .insertTable({ rows, cols, withHeaderRow: withHeader })
+      .run();
+    setShowTableModal(false);
+  };
+
+  const setCellHeightPreset = (preset: 'compact' | 'normal' | 'spacious' | 'tall' | 'custom') => {
+    let padding = '0.75rem 1rem';
+    let minHeight = '48px';
+
+    if (preset === 'compact') {
+      padding = '0.4rem 0.6rem';
+      minHeight = '32px';
+    } else if (preset === 'spacious') {
+      padding = '1.25rem 1.5rem';
+      minHeight = '64px';
+    } else if (preset === 'tall') {
+      padding = '1.5rem 1.75rem';
+      minHeight = '80px';
+    } else if (preset === 'custom') {
+      const val = window.prompt('Enter row minimum height in pixels (e.g. 60):', '50');
+      if (!val) return;
+      const num = parseInt(val, 10);
+      if (!isNaN(num) && num > 10) {
+        minHeight = `${num}px`;
+        padding = `${Math.max(4, Math.round(num / 4))}px 1rem`;
+      }
+    }
+
+    editor
+      .chain()
+      .focus()
+      .setCellAttribute('style', `padding: ${padding}; min-height: ${minHeight}; height: ${minHeight};`)
+      .run();
+    setShowRowHeightMenu(false);
+  };
+
+  const setColumnWidthPreset = (preset: 'auto' | 'compact' | 'medium' | 'wide' | 'custom') => {
+    let widthPx = 0;
+    if (preset === 'compact') widthPx = 120;
+    else if (preset === 'medium') widthPx = 200;
+    else if (preset === 'wide') widthPx = 320;
+    else if (preset === 'custom') {
+      const val = window.prompt('Enter column width in pixels (e.g. 180):', '150');
+      if (!val) return;
+      const num = parseInt(val, 10);
+      if (!isNaN(num) && num > 20) widthPx = num;
+    }
+
+    if (widthPx > 0) {
+      editor
+        .chain()
+        .focus()
+        .setCellAttribute('colwidth', [widthPx])
+        .setCellAttribute('style', `width: ${widthPx}px; min-width: ${widthPx}px;`)
+        .run();
+    } else {
+      editor
+        .chain()
+        .focus()
+        .setCellAttribute('colwidth', null)
+        .setCellAttribute('style', '')
+        .run();
+    }
+    setShowColWidthMenu(false);
   };
 
   return (
@@ -697,6 +827,20 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
           <Minus className="w-4 h-4" />
         </button>
 
+        {/* Table Button */}
+        <button
+          type="button"
+          onClick={() => setShowTableModal(true)}
+          className={`p-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+            editor.isActive('table')
+              ? 'bg-navy-800 text-white dark:bg-amberBrand dark:text-navy-950 font-bold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-navy-800'
+          }`}
+          title="Insert Table (Rows, Columns, Resizing)"
+        >
+          <TableIcon className="w-4 h-4" />
+        </button>
+
         <div className="w-px h-5 bg-slate-200 dark:bg-navy-800 mx-1" />
 
         {/* Alignment */}
@@ -748,6 +892,243 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
           <Redo className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Dynamic Table Control Bar (active whenever cursor is inside any table) */}
+      {editor.isActive('table') && (
+        <div className="bg-amber-50/95 dark:bg-navy-950/95 border-b border-amber-200 dark:border-navy-800 px-3 py-2 flex flex-wrap items-center gap-1.5 text-xs text-navy-800 dark:text-offwhite shadow-xs z-20">
+          <div className="flex items-center gap-1 text-[11px] font-bold text-amberBrand uppercase tracking-wider pr-1.5 border-r border-amber-200 dark:border-navy-800 mr-0.5">
+            <TableIcon className="w-3.5 h-3.5" />
+            <span>Table Tools</span>
+          </div>
+
+          {/* Row Management */}
+          <div className="flex items-center gap-0.5 bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 rounded-lg p-0.5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+              title="Insert Row Above"
+              className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3 h-3 text-emerald-600" />
+              <span>Row Above</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+              title="Insert Row Below"
+              className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3 h-3 text-emerald-600" />
+              <span>Row Below</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().deleteRow().run()}
+              title="Delete Current Row"
+              className="px-2 py-1 rounded text-[11px] font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 flex items-center gap-1 cursor-pointer"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>Del Row</span>
+            </button>
+
+            {/* Row Height Popover */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowRowHeightMenu((p) => !p)}
+                title="Adjust Row Height & Cell Padding"
+                className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 flex items-center gap-1 border-l border-slate-200 dark:border-navy-800 cursor-pointer"
+              >
+                <ArrowUpDown className="w-3 h-3 text-amberBrand" />
+                <span>Row Height</span>
+                <ChevronDown className="w-3 h-3 opacity-60" />
+              </button>
+              {showRowHeightMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowRowHeightMenu(false)} />
+                  <div className="absolute left-0 mt-1 w-44 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in-50">
+                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Row Height / Padding
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCellHeightPreset('compact')}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-amber-50 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
+                    >
+                      <span>Compact</span>
+                      <span className="text-[10px] text-slate-400">32px</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCellHeightPreset('normal')}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-amber-50 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
+                    >
+                      <span>Standard</span>
+                      <span className="text-[10px] text-slate-400">48px</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCellHeightPreset('spacious')}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-amber-50 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
+                    >
+                      <span>Spacious</span>
+                      <span className="text-[10px] text-slate-400">64px</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCellHeightPreset('tall')}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-amber-50 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
+                    >
+                      <span>Tall</span>
+                      <span className="text-[10px] text-slate-400">80px</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCellHeightPreset('custom')}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amberBrand hover:bg-amber-50 dark:hover:bg-navy-800 border-t border-slate-100 dark:border-navy-800 cursor-pointer"
+                    >
+                      Custom Pixels...
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Column Management */}
+          <div className="flex items-center gap-0.5 bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 rounded-lg p-0.5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().addColumnBefore().run()}
+              title="Insert Column to the Left"
+              className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3 h-3 text-blue-600" />
+              <span>Col Left</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().addColumnAfter().run()}
+              title="Insert Column to the Right"
+              className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3 h-3 text-blue-600" />
+              <span>Col Right</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+              title="Delete Current Column"
+              className="px-2 py-1 rounded text-[11px] font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 flex items-center gap-1 cursor-pointer"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>Del Col</span>
+            </button>
+
+            {/* Column Width Popover */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowColWidthMenu((p) => !p)}
+                title="Adjust Column Width (or drag column borders directly)"
+                className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 flex items-center gap-1 border-l border-slate-200 dark:border-navy-800 cursor-pointer"
+              >
+                <ArrowLeftRight className="w-3 h-3 text-blue-600" />
+                <span>Col Width</span>
+                <ChevronDown className="w-3 h-3 opacity-60" />
+              </button>
+              {showColWidthMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowColWidthMenu(false)} />
+                  <div className="absolute left-0 mt-1 w-44 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in-50">
+                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Column Width
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setColumnWidthPreset('auto')}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
+                    >
+                      <span>Auto (Equal)</span>
+                      <span className="text-[10px] text-slate-400">Fit</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setColumnWidthPreset('compact')}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
+                    >
+                      <span>Narrow</span>
+                      <span className="text-[10px] text-slate-400">120px</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setColumnWidthPreset('medium')}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
+                    >
+                      <span>Medium</span>
+                      <span className="text-[10px] text-slate-400">200px</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setColumnWidthPreset('wide')}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
+                    >
+                      <span>Wide</span>
+                      <span className="text-[10px] text-slate-400">320px</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setColumnWidthPreset('custom')}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-600 hover:bg-slate-100 dark:hover:bg-navy-800 border-t border-slate-100 dark:border-navy-800 cursor-pointer"
+                    >
+                      Custom Pixels...
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Structure / Merging */}
+          <div className="flex items-center gap-0.5 bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 rounded-lg p-0.5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleHeaderRow().run()}
+              title="Toggle First Row as Header"
+              className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer"
+            >
+              Header Row
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleHeaderColumn().run()}
+              title="Toggle First Column as Header"
+              className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer"
+            >
+              Header Col
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().mergeOrSplit().run()}
+              title="Merge or Split Selected Cells"
+              className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer"
+            >
+              Merge/Split
+            </button>
+          </div>
+
+          {/* Delete Table */}
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().deleteTable().run()}
+            title="Delete Entire Table"
+            className="ml-auto px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 text-[11px] font-bold hover:bg-rose-100 cursor-pointer flex items-center gap-1"
+          >
+            <Trash2 className="w-3 h-3" />
+            <span>Delete Table</span>
+          </button>
+        </div>
+      )}
 
       {/* Editor Content Box - ONLY THIS PART SCROLLS DOWN */}
       <div className="flex-1 overflow-y-auto bg-white dark:bg-navy-900 text-slate-900 dark:text-slate-200 prose dark:prose-invert max-w-none focus:outline-none scrollbar-thin">
@@ -809,6 +1190,143 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
                 className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 cursor-pointer transition-colors shadow-xs"
               >
                 Insert URL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Table Insertion Modal */}
+      {showTableModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center gap-2 border-b border-slate-100 dark:border-navy-800 pb-3">
+              <div className="w-9 h-9 rounded-xl bg-amberBrand/15 text-amberBrand flex items-center justify-center shrink-0">
+                <TableIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif text-base font-bold text-navy-800 dark:text-offwhite">
+                  Insert Table
+                </h3>
+                <p className="text-[11px] text-charcoal-500 dark:text-slate-400">
+                  Configure rows, columns &amp; layout. You can freely resize columns and row heights after inserting!
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Template Presets */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slateBrand dark:text-slate-400 mb-1.5">
+                Quick Size Presets
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  onClick={() => insertTable(2, 2, true)}
+                  className="p-2 rounded-xl border border-slate-200 dark:border-navy-800 hover:border-amberBrand bg-slate-50 dark:bg-navy-950 text-xs font-semibold text-center hover:bg-amber-50 dark:hover:bg-navy-800 transition-colors cursor-pointer"
+                >
+                  <Grid3X3 className="w-4 h-4 mx-auto mb-1 text-slate-400" />
+                  <span>2 × 2</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertTable(3, 3, true)}
+                  className="p-2 rounded-xl border border-slate-200 dark:border-navy-800 hover:border-amberBrand bg-slate-50 dark:bg-navy-950 text-xs font-semibold text-center hover:bg-amber-50 dark:hover:bg-navy-800 transition-colors cursor-pointer"
+                >
+                  <Grid3X3 className="w-4 h-4 mx-auto mb-1 text-amberBrand" />
+                  <span>3 × 3</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertTable(4, 3, true)}
+                  className="p-2 rounded-xl border border-slate-200 dark:border-navy-800 hover:border-amberBrand bg-slate-50 dark:bg-navy-950 text-xs font-semibold text-center hover:bg-amber-50 dark:hover:bg-navy-800 transition-colors cursor-pointer"
+                >
+                  <Grid3X3 className="w-4 h-4 mx-auto mb-1 text-slate-400" />
+                  <span>4 × 3</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertTable(5, 4, true)}
+                  className="p-2 rounded-xl border border-slate-200 dark:border-navy-800 hover:border-amberBrand bg-slate-50 dark:bg-navy-950 text-xs font-semibold text-center hover:bg-amber-50 dark:hover:bg-navy-800 transition-colors cursor-pointer"
+                >
+                  <Grid3X3 className="w-4 h-4 mx-auto mb-1 text-slate-400" />
+                  <span>5 × 4</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Dimensions */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-slateBrand dark:text-slate-300 mb-1">
+                  Number of Rows
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={tableRows}
+                  onChange={(e) => setTableRows(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slateBrand dark:text-slate-300 mb-1">
+                  Number of Columns
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={tableCols}
+                  onChange={(e) => setTableCols(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
+                />
+              </div>
+            </div>
+
+            {/* Options */}
+            <div className="pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
+                <input
+                  type="checkbox"
+                  checked={tableHeader}
+                  onChange={(e) => setTableHeader(e.target.checked)}
+                  className="rounded border-navy-700 text-amberBrand"
+                />
+                <span className="font-semibold text-navy-800 dark:text-offwhite">
+                  Include Top Header Row (styled with contrast background)
+                </span>
+              </label>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amberBrand/5 border border-amberBrand/20 text-[11px] text-charcoal-600 dark:text-slate-300 space-y-1">
+              <div className="font-bold text-amberBrand flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Editing &amp; Resizing Controls:</span>
+              </div>
+              <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
+                <li><strong>Width:</strong> Hover over column borders and drag to resize column widths interactively.</li>
+                <li><strong>Height:</strong> Click inside any cell to use the &ldquo;Row Height&rdquo; menu (Compact, Standard, Spacious, or custom px).</li>
+                <li><strong>Rows &amp; Columns:</strong> Add or remove rows/columns above, below, left, or right anytime.</li>
+              </ul>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-navy-800">
+              <button
+                type="button"
+                onClick={() => setShowTableModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-navy-700 cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => insertTable()}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-amberBrand text-navy-950 hover:bg-amber-400 cursor-pointer transition-colors shadow-xs"
+              >
+                Insert Table
               </button>
             </div>
           </div>
