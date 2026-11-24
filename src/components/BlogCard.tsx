@@ -120,9 +120,15 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
               </p>
             )}
 
-            <p className="text-charcoal-700 dark:text-slate-300 text-sm line-clamp-3 leading-relaxed">
-              {post.excerpt}
-            </p>
+            {(post.excerpt && post.excerpt !== post.subtitle) ? (
+              <p className="text-charcoal-700 dark:text-slate-300 text-sm line-clamp-3 leading-relaxed">
+                {post.excerpt}
+              </p>
+            ) : (!post.subtitle && post.excerpt) ? (
+              <p className="text-charcoal-700 dark:text-slate-300 text-sm line-clamp-3 leading-relaxed">
+                {post.excerpt}
+              </p>
+            ) : null}
           </div>
 
           <div className="pt-6 border-t border-slate-200 dark:border-navy-800 flex items-center justify-between gap-3">
@@ -258,9 +264,21 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
             </h3>
           </Link>
 
-          <p className="text-charcoal-700 dark:text-slate-300 text-xs sm:text-sm line-clamp-3 leading-relaxed">
-            {post.excerpt}
-          </p>
+          {post.subtitle && (
+            <p className="text-xs font-medium text-slateBrand dark:text-slate-300 italic line-clamp-2">
+              {post.subtitle}
+            </p>
+          )}
+
+          {(post.excerpt && post.excerpt !== post.subtitle) ? (
+            <p className="text-charcoal-700 dark:text-slate-300 text-xs sm:text-sm line-clamp-3 leading-relaxed">
+              {post.excerpt}
+            </p>
+          ) : (!post.subtitle && post.excerpt) ? (
+            <p className="text-charcoal-700 dark:text-slate-300 text-xs sm:text-sm line-clamp-3 leading-relaxed">
+              {post.excerpt}
+            </p>
+          ) : null}
         </div>
       </div>
 

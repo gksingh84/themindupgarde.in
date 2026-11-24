@@ -325,7 +325,7 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
       tags: tagsArray,
       coverImage,
       coverCaption: coverCaption.trim() || undefined,
-      excerpt,
+      excerpt: excerpt.trim() || subtitle.trim() || '',
       content,
       readTime,
       status: finalStatus,
@@ -483,7 +483,13 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
             <textarea
               rows={2}
               value={subtitle}
-              onChange={(e) => setSubtitle(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSubtitle(val);
+                if (!excerpt || excerpt === subtitle) {
+                  setExcerpt(val);
+                }
+              }}
               placeholder="A concise, high-leverage summary that hooks thoughtful readers..."
               className="w-full text-xs sm:text-sm p-3 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
             />

@@ -406,9 +406,20 @@ export function HomeClientView({
                         {post.title}
                       </h3>
                     </Link>
-                    <p className="text-xs text-charcoal-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                      {post.excerpt}
-                    </p>
+                    {post.subtitle && (
+                      <p className="text-[11px] font-medium text-slateBrand dark:text-slate-300 italic line-clamp-1">
+                        {post.subtitle}
+                      </p>
+                    )}
+                    {(post.excerpt && post.excerpt !== post.subtitle) ? (
+                      <p className="text-xs text-charcoal-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                        {post.excerpt}
+                      </p>
+                    ) : (!post.subtitle && post.excerpt) ? (
+                      <p className="text-xs text-charcoal-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                        {post.excerpt}
+                      </p>
+                    ) : null}
                   </div>
                 </article>
               ))}

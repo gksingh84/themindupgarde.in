@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       slug: newBlog.slug || (newBlog.title ? newBlog.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : `post-${Date.now()}`),
       title: newBlog.title || 'Untitled Post',
       subtitle: newBlog.subtitle?.trim() || undefined,
-      excerpt: newBlog.excerpt || '',
+      excerpt: newBlog.excerpt || newBlog.subtitle || '',
       content: newBlog.content || '',
       category: newBlog.category || 'Personal Finance',
       subcategory: newBlog.subcategory?.trim() || undefined,

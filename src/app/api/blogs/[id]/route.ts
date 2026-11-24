@@ -43,7 +43,7 @@ export async function PUT(
           slug: updates.slug || `post-${Date.now()}`,
           title: updates.title,
           subtitle: updates.subtitle,
-          excerpt: updates.excerpt || '',
+          excerpt: updates.excerpt || updates.subtitle || '',
           content: updates.content || '',
           category: updates.category || 'Personal Finance',
           subcategory: updates.subcategory,
@@ -72,6 +72,7 @@ export async function PUT(
     const updatedBlog: BlogPost = {
       ...blogs[index],
       ...updates,
+      excerpt: updates.excerpt !== undefined ? (updates.excerpt || updates.subtitle || '') : (updates.subtitle || blogs[index].excerpt),
       publishedAt: updates.publishedAt ? formatDateDDMMYYYY(updates.publishedAt) : blogs[index].publishedAt,
     };
 
