@@ -82,4 +82,25 @@ export const ClientStorage = {
       localStorage.removeItem(ADMIN_AUTH_KEY);
     }
   },
+  getCustomAdminPassword(): string {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem('tmu_custom_admin_password') || '';
+  },
+  setCustomAdminPassword(password: string): void {
+    if (typeof window === 'undefined') return;
+    if (password) {
+      localStorage.setItem('tmu_custom_admin_password', password);
+    } else {
+      localStorage.removeItem('tmu_custom_admin_password');
+    }
+  },
+  validateAdminPassword(entered: string): boolean {
+    if (!entered) return false;
+    const custom = this.getCustomAdminPassword();
+    if (custom && entered === custom) return true;
+    if (process.env.NEXT_PUBLIC_ADMIN_PASSWORD && entered === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) return true;
+    // Default fallback
+    if (!custom && entered === 'admin123') return true;
+    return false;
+  },
 };

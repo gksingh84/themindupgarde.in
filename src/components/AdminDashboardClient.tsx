@@ -34,8 +34,11 @@ import {
   Compass,
   ArrowRight,
   RefreshCw,
-  Sliders
+  Sliders,
+  KeyRound,
+  AlertCircle
 } from 'lucide-react';
+import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 
 interface AdminDashboardClientProps {
   initialBlogs: BlogPost[];
@@ -48,8 +51,10 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'articles' | 'subscribers' | 'settings' | 'categories' | 'advanced'>('articles');
+  const [activeTab, setActiveTab] = useState<'articles' | 'subscribers' | 'settings' | 'categories' | 'security' | 'advanced'>('articles');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isDefaultPassword, setIsDefaultPassword] = useState(true);
 
   // Subscribers state
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
@@ -64,6 +69,14 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
 
   useEffect(() => {
     setIsAuthenticated(ClientStorage.isAdminAuthenticated());
+    fetch('/api/admin/auth')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && typeof d.isCustom === 'boolean') {
+          setIsDefaultPassword(!d.isCustom);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Fetch subscribers & settings when authenticated
@@ -98,14 +111,29 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
     } catch {}
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin123' || password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        ClientStorage.setAdminAuthenticated(true);
+        setIsAuthenticated(true);
+        showToast('Welcome back to The Mind Upgrade Editorial CMS!', 'success');
+        return;
+      }
+    } catch {}
+
+    if (ClientStorage.validateAdminPassword(password)) {
       ClientStorage.setAdminAuthenticated(true);
       setIsAuthenticated(true);
       showToast('Welcome back to The Mind Upgrade Editorial CMS!', 'success');
     } else {
-      showToast('Incorrect password. Default access is admin123', 'error');
+      showToast('Incorrect password. Please enter the current admin password.', 'error');
     }
   };
 
@@ -297,7 +325,13 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                 required
                 className="w-full p-3 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-sm text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
               />
-              <span className="text-[10px] text-charcoal-500 mt-1 block">Default password: <code>admin123</code></span>
+              <span className="text-[10px] text-charcoal-500 mt-1 block">
+                {isDefaultPassword ? (
+                  <>Default password on first login: <code>admin123</code></>
+                ) : (
+                  <>Enter your custom administrator password</>
+                )}
+              </span>
             </div>
 
             <button
@@ -331,7 +365,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <Link
             href="/admin/new"
             className="px-4 py-2 rounded-xl bg-amberBrand hover:bg-amberBrand/90 text-navy-950 font-bold text-xs shadow-md shadow-amberBrand/25 flex items-center gap-1.5 transition-all"
@@ -339,6 +373,14 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
             <Plus className="w-4 h-4" />
             <span>New Article</span>
           </Link>
+          <button
+            onClick={() => setIsChangePasswordOpen(true)}
+            className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 text-charcoal-700 dark:text-slate-300 hover:text-navy-900 dark:hover:text-amberBrand border border-slate-200 dark:border-navy-700 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+            title="Change Admin Password"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-amberBrand" />
+            <span className="hidden sm:inline">Change Password</span>
+          </button>
           <button
             onClick={handleLogout}
             className="p-2 rounded-xl bg-slate-100 dark:bg-navy-800 text-charcoal-700 dark:text-slate-300 hover:text-rose-600 border border-slate-200 dark:border-navy-700 transition-colors cursor-pointer"
@@ -348,6 +390,27 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
           </button>
         </div>
       </div>
+
+      {/* Security Alert: Default Password in Use */}
+      {isDefaultPassword && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div>
+              <span className="font-bold text-navy-800 dark:text-offwhite block">Default Admin Password In Use</span>
+              <span className="text-charcoal-600 dark:text-slate-400 text-[11px]">
+                Your editorial portal is currently using the default password (<code>admin123</code>). Change your password now to protect your publication.
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsChangePasswordOpen(true)}
+            className="px-4 py-1.5 rounded-xl bg-amberBrand hover:bg-amber-400 text-navy-950 font-bold text-xs shrink-0 transition-colors shadow-xs cursor-pointer self-start sm:self-auto"
+          >
+            Change Password
+          </button>
+        </div>
+      )}
 
       {/* KPI Cards Row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
@@ -449,6 +512,18 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
         >
           <Settings className="w-3.5 h-3.5" />
           <span>Website Settings</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('security')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+            activeTab === 'security'
+              ? 'bg-navy-800 dark:bg-amberBrand text-white dark:text-navy-950 shadow-sm'
+              : 'text-charcoal-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-800'
+          }`}
+        >
+          <KeyRound className="w-3.5 h-3.5" />
+          <span>Security &amp; Password</span>
         </button>
 
         <button
@@ -912,6 +987,99 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
           </div>
         </div>
       )}
+
+      {/* ========================================================
+          TAB 6: SECURITY & PASSWORD MANAGEMENT
+          ======================================================== */}
+      {activeTab === 'security' && (
+        <div className="space-y-6 animate-fade-in max-w-4xl">
+          <div className="p-6 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-navy-800 pb-4">
+              <div>
+                <h3 className="font-serif text-lg font-bold text-navy-800 dark:text-offwhite flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-amberBrand" />
+                  <span>Admin Authentication &amp; Credentials</span>
+                </h3>
+                <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-0.5">
+                  Manage the security password protecting your editorial content, categories, and subscribers.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsChangePasswordOpen(true)}
+                className="px-4 py-2 rounded-xl bg-amberBrand hover:bg-amber-400 text-navy-950 font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Change Password</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slateBrand dark:text-slate-400 block">
+                  Current Password Status
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${isDefaultPassword ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                  <span className="font-bold text-sm text-navy-800 dark:text-offwhite">
+                    {isDefaultPassword ? 'Default Password (admin123)' : 'Custom Secure Password Active'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-charcoal-500 block pt-1">
+                  {isDefaultPassword
+                    ? 'We recommend updating to a custom private password to secure your admin dashboard.'
+                    : 'Your editorial portal is protected with your custom password.'}
+                </span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slateBrand dark:text-slate-400 block">
+                  Session &amp; Token Security
+                </span>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-500" />
+                  <span className="font-bold text-sm text-navy-800 dark:text-offwhite">
+                    Verified Admin Session
+                  </span>
+                </div>
+                <span className="text-[11px] text-charcoal-500 block pt-1">
+                  Active browser session is authenticated and secured locally.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Security Best Practices */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-3 shadow-sm">
+            <h4 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite border-b border-slate-100 dark:border-navy-800 pb-2">
+              Editorial Security Best Practices
+            </h4>
+            <ul className="space-y-2.5 text-xs text-charcoal-600 dark:text-slate-300">
+              <li className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-amberBrand shrink-0 mt-0.5" />
+                <span>Use a memorable, strong password with at least 8 characters combining letters, numbers, and symbols.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-amberBrand shrink-0 mt-0.5" />
+                <span>Never share your administrator password via email or unencrypted chat messages.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-amberBrand shrink-0 mt-0.5" />
+                <span>Always click <strong>Sign Out</strong> when leaving your workstation or using public networks.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        onPasswordChanged={() => {
+          setIsDefaultPassword(false);
+          showToast('Password updated! Please use your new password next time you sign in.', 'success');
+        }}
+      />
 
     </div>
   );

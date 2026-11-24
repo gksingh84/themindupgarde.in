@@ -75,14 +75,29 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin123' || password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        ClientStorage.setAdminAuthenticated(true);
+        setIsAuthenticated(true);
+        showToast('Welcome back, Admin!', 'success');
+        return;
+      }
+    } catch {}
+
+    if (ClientStorage.validateAdminPassword(password)) {
       ClientStorage.setAdminAuthenticated(true);
       setIsAuthenticated(true);
       showToast('Welcome back, Admin!', 'success');
     } else {
-      showToast('Incorrect password. Default is admin123', 'error');
+      showToast('Incorrect password. Please enter the current admin password.', 'error');
     }
   };
 
@@ -165,7 +180,7 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Default password: admin123"
+                placeholder="Enter password..."
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
@@ -180,7 +195,7 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
           </form>
 
           <p className="text-[11px] text-slate-500 text-center">
-            Hint: Default password is <code className="text-indigo-600 dark:text-indigo-400 font-mono">admin123</code>
+            Default password on initial install is <code className="text-indigo-600 dark:text-indigo-400 font-mono">admin123</code>
           </p>
         </div>
       </div>
