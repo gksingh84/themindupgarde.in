@@ -294,11 +294,12 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
         body: JSON.stringify({ blogs }),
       });
       const result = await res.json();
-      if (result.success) {
-        setDynamoConfigured(result.dynamoConfigured);
+      if (res.ok && result.success) {
+        setDynamoConfigured(true);
         showToast(result.message || 'Synced to AWS DynamoDB successfully!', 'success');
       } else {
-        showToast(result.error || 'Sync failed', 'error');
+        setDynamoConfigured(Boolean(result.dynamoConfigured));
+        showToast(result.error || result.message || 'Sync failed', 'error');
       }
     } catch {
       showToast('Failed to connect to sync endpoint', 'error');

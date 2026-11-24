@@ -209,41 +209,61 @@ export async function deleteBlogFromDynamoDB(id: string): Promise<boolean> {
 }
 
 /**
- * Batch save multiple blogs to AWS DynamoDB (chunks of 25).
+ * Put each blog individually into AWS DynamoDB with detailed error diagnostics.
  */
-export async function saveBlogsBatchToDynamoDB(blogs: BlogPost[]): Promise<boolean> {
-  if (!isDynamoDBConfigured() || !blogs || blogs.length === 0) return false;
+export async function saveBlogsToDynamoDBDetailed(
+  blogs: BlogPost[]
+): Promise<{ success: boolean; error?: string; savedCount?: number }> {
+  if (!isDynamoDBConfigured()) {
+    return {
+      success: false,
+      error: 'DynamoDB environment variables not detected (missing APP_AWS_ACCESS_KEY_ID or APP_AWS_SECRET_ACCESS_KEY).',
+    };
+  }
+  if (!blogs || blogs.length === 0) {
+    return { success: false, error: 'No articles provided to save.' };
+  }
 
   try {
     const client = getDynamoDBClient();
     const tableName = getDynamoTableName();
-    const CHUNK_SIZE = 25;
 
-    for (let i = 0; i < blogs.length; i += CHUNK_SIZE) {
-      const chunk = blogs.slice(i, i + CHUNK_SIZE);
-      const putRequests = chunk.map((blog) => ({
-        PutRequest: {
-          Item: {
-            ...blog,
-            updatedAt: new Date().toISOString(),
-          },
-        },
-      }));
+    let savedCount = 0;
+    for (const blog of blogs) {
+      if (!blog || !blog.id) continue;
+      const cleanItem: any = {
+        ...blog,
+        id: String(blog.id),
+        slug: String(blog.slug || `post-${blog.id}`),
+        updatedAt: new Date().toISOString(),
+      };
 
-      const batchCommand = new BatchWriteCommand({
-        RequestItems: {
-          [tableName]: putRequests,
-        },
-      });
-
-      await client.send(batchCommand);
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: cleanItem,
+        })
+      );
+      savedCount++;
     }
 
-    return true;
-  } catch (error) {
-    console.error('DynamoDB BatchWrite Error:', error);
-    return false;
+    return { success: true, savedCount };
+  } catch (error: any) {
+    console.error('DynamoDB Detailed Put Error:', error);
+    const errorMsg = error?.message || error?.name || String(error);
+    return {
+      success: false,
+      error: errorMsg,
+    };
   }
+}
+
+/**
+ * Save multiple blogs to AWS DynamoDB.
+ */
+export async function saveBlogsBatchToDynamoDB(blogs: BlogPost[]): Promise<boolean> {
+  const result = await saveBlogsToDynamoDBDetailed(blogs);
+  return result.success;
 }
 
 /**
