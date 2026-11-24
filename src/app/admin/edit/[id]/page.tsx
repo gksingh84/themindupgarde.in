@@ -57,7 +57,8 @@ export default async function EditBlogPage({ params }: { params: Promise<{ id: s
         (b) =>
           b.id === decodedId ||
           (b.slug && b.slug.toLowerCase() === decodedId.toLowerCase()) ||
-          (b.id === '7' && (decodedId === '7' || decodedId.includes('checklist') || decodedId.includes('pure-term')))
+          (b.id === '7' && (decodedId === '7' || decodedId.includes('pure-term'))) ||
+          (b.id === '8' && (decodedId === '8' || decodedId.includes('checklist')))
       ) || null;
   } catch (err) {
     console.warn('EditBlogPage params resolution notice:', err);

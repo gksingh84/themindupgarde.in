@@ -234,19 +234,25 @@ export function getBlogBySlugServer(slug: string): BlogPost | undefined {
 
     // Backward-compatibility aliases for renamed or migrated slugs
     if (
-      (decoded === 'pure-term-life-insurance-vs-endowment-ulip' || decoded === 'checklist-to-compare-term-insurance-plans-in-india') &&
-      (b.id === '7' || bSlug === 'checklist-to-compare-term-insurance-plans-in-india' || bSlug === 'pure-term-life-insurance-vs-endowment-ulip')
+      decoded === 'pure-term-life-insurance-vs-endowment-ulip' &&
+      (b.id === '7' || bSlug === 'pure-term-life-insurance-vs-endowment-ulip')
     ) {
       return true;
     }
     if (
-      (decoded === 'pure-term-life-insurance-vs-endowment-ulip' || decoded === 'understanding-repo-rate') &&
-      (b.id === '6' || bSlug === 'understanding-repo-rate' || bSlug === 'pure-term-life-insurance-vs-endowment-ulip')
+      decoded === 'checklist-to-compare-term-insurance-plans-in-india' &&
+      (b.id === '8' || b.id === '7' || bSlug === 'checklist-to-compare-term-insurance-plans-in-india')
     ) {
       return true;
     }
     if (
-      (decoded === 'cash-reserve-ratio') &&
+      decoded === 'understanding-repo-rate' &&
+      (b.id === '6' || bSlug === 'understanding-repo-rate')
+    ) {
+      return true;
+    }
+    if (
+      decoded === 'cash-reserve-ratio' &&
       (b.id === '1' || bSlug === 'cash-reserve-ratio')
     ) {
       return true;

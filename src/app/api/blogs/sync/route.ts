@@ -8,10 +8,16 @@ import {
   getDynamoRegion,
   getDynamoAccessKeyId,
   getDynamoSecretAccessKey,
+  applyDynamoCredsHeader,
 } from '@/lib/dynamodb';
 import { BlogPost } from '@/types/blog';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const credsHeader = request.headers.get('x-dynamo-creds');
+  if (credsHeader) {
+    applyDynamoCredsHeader(credsHeader);
+  }
+
   const configured = isDynamoDBConfigured();
   const tableName = getDynamoTableName();
   const region = getDynamoRegion();
@@ -58,13 +64,17 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const credsHeader = request.headers.get('x-dynamo-creds');
+    if (credsHeader) {
+      applyDynamoCredsHeader(credsHeader);
+    }
+
     const body = await request.json().catch(() => ({}));
     const clientBlogs: BlogPost[] = body.blogs || [];
     const creds = body.credentials;
 
     // If client supplied credentials directly from Admin UI, configure runtime immediately
     if (creds && creds.accessKeyId && creds.secretAccessKey) {
-      const { setDynamoRuntimeConfig } = await import('@/lib/dynamodb');
       setDynamoRuntimeConfig({
         tableName: creds.tableName,
         region: creds.region,

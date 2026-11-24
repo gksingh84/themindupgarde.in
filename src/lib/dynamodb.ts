@@ -58,6 +58,16 @@ export function setDynamoRuntimeConfig(config: {
   } catch {}
 }
 
+export function applyDynamoCredsHeader(headerValue?: string | null) {
+  if (!headerValue) return;
+  try {
+    const parsed = typeof headerValue === 'string' ? JSON.parse(headerValue) : headerValue;
+    if (parsed && (parsed.accessKeyId || parsed.secretAccessKey)) {
+      setDynamoRuntimeConfig(parsed);
+    }
+  } catch {}
+}
+
 export function getDynamoTableName(): string {
   loadDiskConfig();
   if (runtimeConfig?.tableName) return runtimeConfig.tableName;

@@ -7,11 +7,13 @@ import {
 } from '@/lib/blog-service';
 import { BlogPost } from '@/types/blog';
 import { formatDateDDMMYYYY } from '@/lib/date-utils';
+import { applyDynamoCredsHeader } from '@/lib/dynamodb';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  applyDynamoCredsHeader(request.headers.get('x-dynamo-creds'));
   const { id } = await params;
   const blog = await getBlogBySlugServerAsync(id);
 
@@ -27,6 +29,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    applyDynamoCredsHeader(request.headers.get('x-dynamo-creds'));
     const { id } = await params;
     const updates: Partial<BlogPost> = await request.json();
     const blogs = await getBlogsServerAsync();
@@ -84,6 +87,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    applyDynamoCredsHeader(request.headers.get('x-dynamo-creds'));
     const { id } = await params;
     const success = await deleteBlogServer(id);
 
