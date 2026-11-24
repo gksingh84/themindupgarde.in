@@ -84,11 +84,33 @@ export function saveBlogsServer(blogs: BlogPost[]): boolean {
 }
 
 /**
- * Synchronous helper to find blog by slug.
+ * Synchronous helper to find blog by slug (case-insensitive with URL decoding & aliases).
  */
 export function getBlogBySlugServer(slug: string): BlogPost | undefined {
+  if (!slug) return undefined;
+  const decoded = decodeURIComponent(slug).toLowerCase().trim();
   const blogs = getBlogsServer();
-  return blogs.find((b) => b.slug === slug);
+
+  return blogs.find((b) => {
+    const bSlug = (b.slug || '').toLowerCase().trim();
+    const bId = (b.id || '').toLowerCase().trim();
+    if (bSlug === decoded || bId === decoded) return true;
+
+    // Backward-compatibility aliases for renamed or migrated slugs
+    if (
+      (decoded === 'pure-term-life-insurance-vs-endowment-ulip' || decoded === 'understanding-repo-rate') &&
+      (b.id === '6' || bSlug === 'understanding-repo-rate' || bSlug === 'pure-term-life-insurance-vs-endowment-ulip')
+    ) {
+      return true;
+    }
+    if (
+      (decoded === 'cash-reserve-ratio') &&
+      (b.id === '1' || bSlug === 'cash-reserve-ratio')
+    ) {
+      return true;
+    }
+    return false;
+  });
 }
 
 /**

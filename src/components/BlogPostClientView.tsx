@@ -27,7 +27,8 @@ import {
 } from 'lucide-react';
 
 interface BlogPostClientViewProps {
-  post: BlogPost;
+  post: BlogPost | null;
+  slug?: string;
   relatedPosts: BlogPost[];
 }
 
@@ -37,20 +38,67 @@ interface TocItem {
   level: number;
 }
 
-export function BlogPostClientView({ post: initialPost, relatedPosts: initialRelated }: BlogPostClientViewProps) {
-  const [post, setPost] = useState<BlogPost>(initialPost);
+export function BlogPostClientView({
+  post: initialPost,
+  slug = '',
+  relatedPosts: initialRelated,
+}: BlogPostClientViewProps) {
+  const [post, setPost] = useState<BlogPost | null>(initialPost);
   const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>(initialRelated);
+  const [loading, setLoading] = useState(!initialPost);
+  const [notFound, setNotFound] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const custom = ClientStorage.getCustomBlog(initialPost.id || initialPost.slug);
+    const admin = ClientStorage.isAdminAuthenticated();
+    setIsAdmin(admin);
+
+    const targetKey = slug || initialPost?.slug || initialPost?.id || '';
+    const decodedKey = decodeURIComponent(targetKey).toLowerCase().trim();
+
+    // 1. Check custom blogs from ClientStorage
+    const custom = ClientStorage.getCustomBlog(targetKey) || 
+      (initialPost ? ClientStorage.getCustomBlog(initialPost.id || initialPost.slug) : undefined);
+
     if (custom) {
       setPost(custom);
+      setNotFound(false);
+      setLoading(false);
+    } else if (initialPost) {
+      if (initialPost.status === 'draft' && !admin) {
+        setNotFound(true);
+      } else {
+        setPost(initialPost);
+        setNotFound(false);
+      }
+      setLoading(false);
+    } else {
+      // 2. Check merged blogs in ClientStorage
+      const merged = ClientStorage.getMergedBlogs();
+      const match = merged.find((b) => {
+        const bSlug = (b.slug || '').toLowerCase().trim();
+        const bId = (b.id || '').toLowerCase().trim();
+        return bSlug === decodedKey || bId === decodedKey;
+      });
+
+      if (match) {
+        if (match.status === 'draft' && !admin) {
+          setNotFound(true);
+        } else {
+          setPost(match);
+          setNotFound(false);
+        }
+      } else {
+        setNotFound(true);
+      }
+      setLoading(false);
     }
+
     const mergedRelated = ClientStorage.getMergedBlogs(initialRelated);
     setRelatedPosts(mergedRelated);
-  }, [initialPost, initialRelated]);
+  }, [initialPost, initialRelated, slug]);
 
-  const [likes, setLikes] = useState(post.likes || 0);
+  const [likes, setLikes] = useState(initialPost?.likes || 0);
   const [hasLiked, setHasLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -98,6 +146,8 @@ export function BlogPostClientView({ post: initialPost, relatedPosts: initialRel
 
   // Initialize storage states & fetch comments
   useEffect(() => {
+    if (!post) return;
+    setLikes(post.likes || 0);
     setHasLiked(ClientStorage.isLiked(post.slug));
     setIsBookmarked(ClientStorage.isBookmarked(post.slug));
 
@@ -115,11 +165,11 @@ export function BlogPostClientView({ post: initialPost, relatedPosts: initialRel
         if (Array.isArray(data)) setComments(data);
       })
       .catch(() => {});
-  }, [post.id, post.slug]);
+  }, [post?.id, post?.slug]);
 
   // Extract Table of Contents from HTML
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!post || !post.content || typeof window === 'undefined') return;
     const parser = new DOMParser();
     const doc = parser.parseFromString(post.content, 'text/html');
     const headings = doc.querySelectorAll('h2, h3');
@@ -136,18 +186,20 @@ export function BlogPostClientView({ post: initialPost, relatedPosts: initialRel
     });
 
     setToc(items);
-  }, [post.content]);
+  }, [post?.content]);
 
   // Assign IDs to headings in actual rendered DOM
   useEffect(() => {
+    if (!post || !post.content) return;
     const headingElements = document.querySelectorAll('.prose-editorial h2, .prose-editorial h3');
     headingElements.forEach((heading, idx) => {
       heading.id = `section-${idx}`;
     });
-  }, [post.content]);
+  }, [post?.content]);
 
   // Like handler
   const handleLike = async () => {
+    if (!post) return;
     if (hasLiked) {
       const removed = ClientStorage.removeLikedPost(post.slug);
       if (removed) {
@@ -170,6 +222,7 @@ export function BlogPostClientView({ post: initialPost, relatedPosts: initialRel
 
   // Bookmark handler
   const handleBookmark = () => {
+    if (!post) return;
     const updated = ClientStorage.toggleBookmark(post.slug);
     setIsBookmarked(updated);
     showToast(
@@ -188,23 +241,27 @@ export function BlogPostClientView({ post: initialPost, relatedPosts: initialRel
 
   // Social Shares
   const handleShareTwitter = () => {
+    if (!post) return;
     const url = encodeURIComponent(window.location.href);
     const text = encodeURIComponent(`"${post.title}" via @TheMindUpgrade`);
     window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
   };
 
   const handleShareLinkedIn = () => {
+    if (!post) return;
     const url = encodeURIComponent(window.location.href);
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank');
   };
 
   const handleShareWhatsApp = () => {
+    if (!post) return;
     const url = encodeURIComponent(window.location.href);
     const text = encodeURIComponent(`"${post.title}" - Read on The Mind Upgrade: ${window.location.href}`);
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
   const handleShareFacebook = () => {
+    if (!post) return;
     const url = encodeURIComponent(window.location.href);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'noopener,noreferrer');
   };
@@ -224,6 +281,7 @@ export function BlogPostClientView({ post: initialPost, relatedPosts: initialRel
   // Comment Submit
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!post) return;
     if (!commentText.trim()) {
       showToast('Please enter your comment.', 'error');
       return;
@@ -254,6 +312,53 @@ export function BlogPostClientView({ post: initialPost, relatedPosts: initialRel
     }
   };
 
+  if (loading) {
+    return (
+      <div className="container-custom py-28 text-center space-y-4">
+        <div className="w-10 h-10 border-3 border-amberBrand border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-charcoal-600 dark:text-slate-400">Loading publication...</p>
+      </div>
+    );
+  }
+
+  if (notFound || !post) {
+    return (
+      <div className="container-custom py-24 sm:py-32 text-center max-w-xl mx-auto space-y-6 animate-fade-in">
+        <div className="w-16 h-16 rounded-2xl bg-amberBrand/10 text-amberBrand flex items-center justify-center mx-auto border border-amberBrand/30 shadow-md">
+          <Layers className="w-8 h-8" />
+        </div>
+        <h1 className="font-serif text-3xl sm:text-4xl font-extrabold text-navy-800 dark:text-offwhite">
+          Idea Node Not Found
+        </h1>
+        <p className="text-sm text-charcoal-600 dark:text-slate-300 leading-relaxed">
+          The publication you are looking for has been moved, renamed, or is currently unpublished.
+        </p>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <Link
+            href="/"
+            className="px-5 py-2.5 rounded-xl bg-amberBrand text-navy-950 font-bold text-xs hover:bg-amber-400 transition-colors shadow-xs"
+          >
+            Return to Homepage
+          </Link>
+          <Link
+            href="/categories"
+            className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-navy-700 text-navy-800 dark:text-offwhite font-bold text-xs hover:bg-slate-200 transition-colors"
+          >
+            Browse Categories
+          </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="px-5 py-2.5 rounded-xl bg-navy-800 text-amberBrand font-bold text-xs hover:bg-navy-700 transition-colors"
+            >
+              Admin Dashboard
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* 5.4.1: Reading Progress Bar at the top of viewport */}
@@ -265,6 +370,15 @@ export function BlogPostClientView({ post: initialPost, relatedPosts: initialRel
         aria-valuemin={0}
         aria-valuemax={100}
       />
+
+      {post.status === 'draft' && (
+        <div className="bg-amber-500/10 border-b border-amber-500/30 text-amber-800 dark:text-amber-300 px-4 py-2 text-center text-xs font-bold flex items-center justify-center gap-2">
+          <span>⚠️ Unpublished Draft Preview (visible only to Administrator)</span>
+          <Link href={`/admin/edit/${post.id}`} className="underline hover:text-amber-600">
+            Edit Article
+          </Link>
+        </div>
+      )}
 
       <article className="container-custom py-6 sm:py-10 space-y-8">
         
