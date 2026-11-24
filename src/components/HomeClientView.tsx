@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { BlogPost } from '@/types/blog';
 import { CATEGORIES } from '@/data/categories';
 import { BlogCard } from '@/components/BlogCard';
 import { useToast } from '@/context/ToastContext';
 import { formatDateDDMMYYYY } from '@/lib/date-utils';
+import { ClientStorage } from '@/lib/client-storage';
 import { 
   ArrowRight, 
   Coins, 
@@ -38,6 +39,8 @@ export function HomeClientView({
   editorsPicks = [],
   popularPosts = [] 
 }: HomeClientViewProps) {
+  const [blogs, setBlogs] = useState<BlogPost[]>(initialBlogs);
+  const [heroPost, setHeroPost] = useState<BlogPost | null>(featuredPost || null);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [popularPeriod, setPopularPeriod] = useState<'7d' | '30d' | 'all'>('7d');
   const [visibleCount, setVisibleCount] = useState<number>(6);
@@ -46,6 +49,13 @@ export function HomeClientView({
   const [newsletterAgreed, setNewsletterAgreed] = useState(false);
   const [submittingNewsletter, setSubmittingNewsletter] = useState(false);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    const merged = ClientStorage.getMergedBlogs(initialBlogs);
+    setBlogs(merged);
+    const updatedHero = merged.find((b) => b.id === featuredPost?.id || b.slug === featuredPost?.slug) || merged[0] || null;
+    setHeroPost(updatedHero);
+  }, [initialBlogs, featuredPost]);
 
   const getCategoryIcon = (iconName: string) => {
     switch (iconName) {
@@ -65,7 +75,7 @@ export function HomeClientView({
   };
 
   // Filtered by selected category pill
-  const filteredBlogs = initialBlogs.filter((b) => {
+  const filteredBlogs = blogs.filter((b) => {
     if (selectedCategory === 'All') return true;
     return b.category.toLowerCase() === selectedCategory.toLowerCase();
   });
@@ -75,28 +85,28 @@ export function HomeClientView({
 
   // Category counts
   const getCategoryCount = (catName: string) => {
-    return initialBlogs.filter((b) => b.category.toLowerCase() === catName.toLowerCase()).length;
+    return blogs.filter((b) => b.category.toLowerCase() === catName.toLowerCase()).length;
   };
 
   // Featured grid posts (excluding hero if possible, up to 3)
-  const featuredGrid = initialBlogs
-    .filter((b) => b.id !== featuredPost?.id && (b.featured || b.editorsPick))
+  const featuredGrid = blogs
+    .filter((b) => b.id !== heroPost?.id && (b.featured || b.editorsPick))
     .slice(0, 3);
 
   // Fallback if not enough featured
   const secondaryFeatured = featuredGrid.length > 0 
     ? featuredGrid 
-    : initialBlogs.filter((b) => b.id !== featuredPost?.id).slice(0, 3);
+    : blogs.filter((b) => b.id !== heroPost?.id).slice(0, 3);
 
   // Editor's picks
   const resolvedEditorsPicks = editorsPicks.length > 0 
     ? editorsPicks 
-    : initialBlogs.slice(1, 5);
+    : blogs.slice(1, 5);
 
   // Popular posts sorted by views
   const resolvedPopular = popularPosts.length > 0 
     ? popularPosts 
-    : [...initialBlogs].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
+    : [...blogs].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
 
   const handleNewsletter = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,9 +174,9 @@ export function HomeClientView({
           </div>
 
           {/* Hero Featured Article Spotlight Card */}
-          {featuredPost && (
+          {heroPost && (
             <div className="pt-2">
-              <BlogCard post={featuredPost} featured={true} />
+              <BlogCard post={heroPost} featured={true} />
             </div>
           )}
 

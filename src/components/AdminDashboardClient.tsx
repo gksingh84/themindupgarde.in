@@ -69,6 +69,8 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
 
   useEffect(() => {
     setIsAuthenticated(ClientStorage.isAdminAuthenticated());
+    const merged = ClientStorage.getMergedBlogs(initialBlogs);
+    setBlogs(merged);
     fetch('/api/admin/auth')
       .then((r) => r.json())
       .then((d) => {
@@ -77,7 +79,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
         }
       })
       .catch(() => {});
-  }, []);
+  }, [initialBlogs]);
 
   // Fetch subscribers & settings when authenticated
   useEffect(() => {
@@ -146,30 +148,29 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
   // Toggle Article Status (draft / published)
   const toggleStatus = async (blog: BlogPost) => {
     const newStatus = blog.status === 'published' ? 'draft' : 'published';
+    const updated: BlogPost = { ...blog, status: newStatus };
+    ClientStorage.saveBlog(updated);
+    setBlogs((prev) =>
+      prev.map((b) => (b.id === blog.id ? updated : b))
+    );
+    showToast(
+      `Status changed to ${newStatus.toUpperCase()}`,
+      newStatus === 'published' ? 'success' : 'info'
+    );
     try {
-      const res = await fetch(`/api/blogs/${blog.id}`, {
+      await fetch(`/api/blogs/${blog.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (res.ok) {
-        setBlogs((prev) =>
-          prev.map((b) => (b.id === blog.id ? { ...b, status: newStatus } : b))
-        );
-        showToast(
-          `Status changed to ${newStatus.toUpperCase()}`,
-          newStatus === 'published' ? 'success' : 'info'
-        );
-      }
-    } catch {
-      showToast('Failed to update status', 'error');
-    }
+    } catch {}
   };
 
   // Duplicate Article
   const handleDuplicate = async (blog: BlogPost) => {
-    const duplicated: Partial<BlogPost> = {
+    const duplicated: BlogPost = {
       ...blog,
+      id: `copy-${Date.now()}`,
       title: `${blog.title} (Copy)`,
       slug: `${blog.slug}-copy-${Date.now()}`,
       status: 'draft',
@@ -177,6 +178,10 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       likes: 0,
       publishedAt: formatDateDDMMYYYY(new Date()),
     };
+    ClientStorage.saveBlog(duplicated);
+    setBlogs((prev) => [duplicated, ...prev]);
+    showToast('Article duplicated as draft', 'success');
+
     try {
       const res = await fetch('/api/blogs', {
         method: 'POST',
@@ -185,27 +190,34 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       });
       if (res.ok) {
         const created = await res.json();
-        setBlogs((prev) => [created, ...prev]);
-        showToast('Article duplicated as draft', 'success');
+        if (created && created.id) {
+          ClientStorage.saveBlog(created);
+        }
       }
-    } catch {
-      showToast('Failed to duplicate article', 'error');
-    }
+    } catch {}
   };
 
-  // Delete Article
+  // Delete Article (Permanently persists across page refresh and browser sessions)
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this publication?')) return;
+    if (!confirm('Are you sure you want to permanently delete this publication? This action cannot be undone.')) return;
     setDeletingId(id);
+
+    // 1. Permanently delete from ClientStorage
+    const targetBlog = blogs.find((b) => b.id === id);
+    ClientStorage.markBlogDeleted(id);
+    if (targetBlog && targetBlog.slug) {
+      ClientStorage.markBlogDeleted(targetBlog.slug);
+    }
+
+    // 2. Remove immediately from local state
+    setBlogs((prev) => prev.filter((b) => b.id !== id && b.slug !== id));
+    showToast('Article permanently deleted from publication.', 'success');
+
+    // 3. Notify backend
     try {
-      const res = await fetch(`/api/blogs/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setBlogs((prev) => prev.filter((b) => b.id !== id));
-        showToast('Article deleted successfully', 'success');
-      }
-    } catch {
-      showToast('Failed to delete article', 'error');
-    } finally {
+      await fetch(`/api/blogs/${id}`, { method: 'DELETE' });
+    } catch {}
+    finally {
       setDeletingId(null);
     }
   };
@@ -581,6 +593,18 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                   </option>
                 ))}
               </select>
+
+              <button
+                onClick={() => {
+                  ClientStorage.exportBlogsJson(blogs);
+                  showToast('Exported active articles to blogs.json!', 'success');
+                }}
+                className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite hover:text-amberBrand transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                title="Backup / Export articles as blogs.json"
+              >
+                <Download className="w-3.5 h-3.5 text-amberBrand" />
+                <span className="hidden sm:inline">Export JSON</span>
+              </button>
             </div>
           </div>
 

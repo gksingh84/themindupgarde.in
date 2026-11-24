@@ -37,7 +37,19 @@ interface TocItem {
   level: number;
 }
 
-export function BlogPostClientView({ post, relatedPosts }: BlogPostClientViewProps) {
+export function BlogPostClientView({ post: initialPost, relatedPosts: initialRelated }: BlogPostClientViewProps) {
+  const [post, setPost] = useState<BlogPost>(initialPost);
+  const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>(initialRelated);
+
+  useEffect(() => {
+    const custom = ClientStorage.getCustomBlog(initialPost.id || initialPost.slug);
+    if (custom) {
+      setPost(custom);
+    }
+    const mergedRelated = ClientStorage.getMergedBlogs(initialRelated);
+    setRelatedPosts(mergedRelated);
+  }, [initialPost, initialRelated]);
+
   const [likes, setLikes] = useState(post.likes || 0);
   const [hasLiked, setHasLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);

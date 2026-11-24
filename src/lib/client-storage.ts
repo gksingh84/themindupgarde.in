@@ -4,6 +4,8 @@ import initialBlogs from '@/data/blogs.json';
 const BOOKMARKS_KEY = 'tmu_bookmarks';
 const LIKES_KEY = 'tmu_likes';
 const ADMIN_AUTH_KEY = 'tmu_admin_auth';
+const DELETED_BLOGS_KEY = 'tmu_deleted_blog_ids';
+const CUSTOM_BLOGS_KEY = 'tmu_custom_blogs';
 
 export const ClientStorage = {
   // Bookmarks
@@ -102,5 +104,109 @@ export const ClientStorage = {
     // Default fallback
     if (!custom && entered === 'admin123') return true;
     return false;
+  },
+
+  // Deleted Blogs Persistence
+  getDeletedBlogIds(): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(DELETED_BLOGS_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+  markBlogDeleted(idOrSlug: string): void {
+    if (typeof window === 'undefined') return;
+    const deleted = this.getDeletedBlogIds();
+    if (!deleted.includes(idOrSlug)) {
+      deleted.push(idOrSlug);
+      localStorage.setItem(DELETED_BLOGS_KEY, JSON.stringify(deleted));
+    }
+    // Also remove from custom blogs if it was there
+    const custom = this.getCustomBlogs();
+    if (custom[idOrSlug]) {
+      delete custom[idOrSlug];
+      localStorage.setItem(CUSTOM_BLOGS_KEY, JSON.stringify(custom));
+    }
+  },
+
+  // Custom / Edited Blogs Persistence
+  getCustomBlogs(): Record<string, BlogPost> {
+    if (typeof window === 'undefined') return {};
+    try {
+      const data = localStorage.getItem(CUSTOM_BLOGS_KEY);
+      return data ? JSON.parse(data) : {};
+    } catch {
+      return {};
+    }
+  },
+  saveBlog(blog: BlogPost): void {
+    if (typeof window === 'undefined') return;
+    const custom = this.getCustomBlogs();
+    const key = blog.id || blog.slug;
+    custom[key] = blog;
+    localStorage.setItem(CUSTOM_BLOGS_KEY, JSON.stringify(custom));
+
+    // Ensure it is removed from deleted list if re-saved
+    const deleted = this.getDeletedBlogIds();
+    const filtered = deleted.filter((d) => d !== blog.id && d !== blog.slug);
+    localStorage.setItem(DELETED_BLOGS_KEY, JSON.stringify(filtered));
+  },
+  getCustomBlog(idOrSlug: string): BlogPost | undefined {
+    if (typeof window === 'undefined') return undefined;
+    const custom = this.getCustomBlogs();
+    if (custom[idOrSlug]) return custom[idOrSlug];
+    return Object.values(custom).find((b) => b.id === idOrSlug || b.slug === idOrSlug);
+  },
+
+  // Merged Blogs for Editorial Views
+  getMergedBlogs(initialBlogs: BlogPost[] = []): BlogPost[] {
+    if (typeof window === 'undefined') return initialBlogs;
+
+    const deletedIds = this.getDeletedBlogIds();
+    const customMap = this.getCustomBlogs();
+
+    // 1. Filter out deleted blogs from initial list
+    let result = initialBlogs.filter(
+      (b) => !deletedIds.includes(b.id) && !deletedIds.includes(b.slug)
+    );
+
+    // 2. Replace any modified initial blogs with custom versions
+    result = result.map((b) => {
+      const key = b.id || b.slug;
+      if (customMap[key]) return customMap[key];
+      const match = Object.values(customMap).find((c) => c.id === b.id || c.slug === b.slug);
+      return match || b;
+    });
+
+    // 3. Append newly created blogs not in initial list
+    const initialKeys = new Set(initialBlogs.map((b) => b.id));
+    const initialSlugs = new Set(initialBlogs.map((b) => b.slug));
+
+    Object.values(customMap).forEach((customBlog) => {
+      if (
+        !initialKeys.has(customBlog.id) &&
+        !initialSlugs.has(customBlog.slug) &&
+        !deletedIds.includes(customBlog.id) &&
+        !deletedIds.includes(customBlog.slug)
+      ) {
+        result.unshift(customBlog);
+      }
+    });
+
+    return result;
+  },
+
+  // Export current publication state as JSON
+  exportBlogsJson(blogs: BlogPost[]): void {
+    if (typeof window === 'undefined') return;
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(blogs, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', 'blogs.json');
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   },
 };

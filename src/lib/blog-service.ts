@@ -1,11 +1,13 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { BlogPost, ArticleRevision } from '@/types/blog';
 import initialBlogs from '@/data/blogs.json';
 import { prisma } from '@/lib/prisma';
 import { parseDate } from '@/lib/date-utils';
 
 const DATA_FILE = path.join(process.cwd(), 'src/data/blogs.json');
+const TMP_DATA_FILE = path.join(os.tmpdir(), 'tmu_blogs.json');
 
 /**
  * Reads blogs synchronously from blogs.json fallback with scheduled post auto-publish logic.
@@ -13,7 +15,10 @@ const DATA_FILE = path.join(process.cwd(), 'src/data/blogs.json');
 export function getBlogsServer(): BlogPost[] {
   let blogs: BlogPost[] = [];
   try {
-    if (fs.existsSync(DATA_FILE)) {
+    if (fs.existsSync(TMP_DATA_FILE)) {
+      const fileData = fs.readFileSync(TMP_DATA_FILE, 'utf-8');
+      blogs = JSON.parse(fileData);
+    } else if (fs.existsSync(DATA_FILE)) {
       const fileData = fs.readFileSync(DATA_FILE, 'utf-8');
       blogs = JSON.parse(fileData);
     } else {
@@ -50,20 +55,32 @@ export function getBlogsServer(): BlogPost[] {
 }
 
 /**
- * Saves blogs synchronously to blogs.json fallback.
+ * Saves blogs synchronously to blogs.json fallback (and /tmp on serverless environments).
  */
 export function saveBlogsServer(blogs: BlogPost[]): boolean {
+  let saved = false;
+
+  // 1. Always save to TMP_DATA_FILE (writable on AWS Lambda / Amplify)
+  try {
+    fs.writeFileSync(TMP_DATA_FILE, JSON.stringify(blogs, null, 2), 'utf-8');
+    saved = true;
+  } catch (err) {
+    console.error('Error saving to tmp blogs:', err);
+  }
+
+  // 2. Also try writing to project DATA_FILE (works on local/persistent servers)
   try {
     const dir = path.dirname(DATA_FILE);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(DATA_FILE, JSON.stringify(blogs, null, 2), 'utf-8');
-    return true;
+    saved = true;
   } catch (error) {
-    console.error('Error saving blogs.json:', error);
-    return false;
+    // EROFS is expected on serverless / read-only production lambda
   }
+
+  return saved;
 }
 
 /**

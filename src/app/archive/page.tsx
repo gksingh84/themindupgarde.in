@@ -27,5 +27,5 @@ export default function ArchivePage() {
     grouped[monthYear].push(b);
   });
 
-  return <ArchiveClientView grouped={grouped} totalCount={blogs.length} />;
+  return <ArchiveClientView grouped={grouped} totalCount={blogs.length} initialBlogs={blogs} />;
 }

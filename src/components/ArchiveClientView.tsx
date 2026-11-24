@@ -1,17 +1,40 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { BlogPost } from '@/types/blog';
-import { formatDateDDMMYYYY } from '@/lib/date-utils';
+import { formatDateDDMMYYYY, parseDate } from '@/lib/date-utils';
+import { ClientStorage } from '@/lib/client-storage';
 import { Calendar, Clock, ChevronDown, ChevronRight, Search, BookOpen, ArrowUpRight } from 'lucide-react';
 
 interface ArchiveClientViewProps {
   grouped: Record<string, BlogPost[]>;
   totalCount: number;
+  initialBlogs?: BlogPost[];
 }
 
-export function ArchiveClientView({ grouped, totalCount }: ArchiveClientViewProps) {
+export function ArchiveClientView({ grouped: initialGrouped, totalCount: initialTotal, initialBlogs }: ArchiveClientViewProps) {
+  const [grouped, setGrouped] = useState<Record<string, BlogPost[]>>(initialGrouped);
+  const [totalCount, setTotalCount] = useState<number>(initialTotal);
+
+  useEffect(() => {
+    if (!initialBlogs) return;
+    const merged = ClientStorage.getMergedBlogs(initialBlogs).filter((b) => b.status === 'published');
+    const newGrouped: Record<string, BlogPost[]> = {};
+    merged.forEach((b) => {
+      const date = parseDate(b.publishedAt);
+      const monthYear = isNaN(date.getTime())
+        ? 'Archive'
+        : date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (!newGrouped[monthYear]) {
+        newGrouped[monthYear] = [];
+      }
+      newGrouped[monthYear].push(b);
+    });
+    setGrouped(newGrouped);
+    setTotalCount(merged.length);
+  }, [initialBlogs]);
+
   const monthYears = Object.keys(grouped);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(
     monthYears.reduce((acc, my) => ({ ...acc, [my]: true }), {})
