@@ -43,6 +43,33 @@ function loadDiskConfig() {
       }
     }
   } catch {}
+
+  // Parse .env.production or .env files directly if present
+  try {
+    const envPaths = [
+      path.join(process.cwd(), '.env.production'),
+      path.join(process.cwd(), '.env'),
+      path.join(process.cwd(), '.env.local'),
+    ];
+    for (const p of envPaths) {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, 'utf-8');
+        const lines = raw.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const idx = trimmed.indexOf('=');
+          if (idx > -1) {
+            const k = trimmed.slice(0, idx).trim();
+            const v = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+            if (!process.env[k] && v) {
+              process.env[k] = v;
+            }
+          }
+        }
+      }
+    }
+  } catch {}
 }
 
 export function setDynamoRuntimeConfig(config: {
@@ -97,8 +124,11 @@ export function getDynamoAccessKeyId(): string {
   if (runtimeConfig?.accessKeyId) return runtimeConfig.accessKeyId;
   return getEnvValue([
     'APP_AWS_ACCESS_KEY_ID',
-    'MY_AWS_ACCESS_KEY_ID',
+    'DYNAMODB_ACCESS_KEY_ID',
     'DYNAMO_ACCESS_KEY_ID',
+    'TMU_AWS_ACCESS_KEY_ID',
+    'TMU_DYNAMO_ACCESS_KEY_ID',
+    'MY_AWS_ACCESS_KEY_ID',
     'AWS_ACCESS_KEY_ID',
   ]);
 }
@@ -108,8 +138,11 @@ export function getDynamoSecretAccessKey(): string {
   if (runtimeConfig?.secretAccessKey) return runtimeConfig.secretAccessKey;
   return getEnvValue([
     'APP_AWS_SECRET_ACCESS_KEY',
-    'MY_AWS_SECRET_ACCESS_KEY',
+    'DYNAMODB_SECRET_ACCESS_KEY',
     'DYNAMO_SECRET_ACCESS_KEY',
+    'TMU_AWS_SECRET_ACCESS_KEY',
+    'TMU_DYNAMO_SECRET_ACCESS_KEY',
+    'MY_AWS_SECRET_ACCESS_KEY',
     'AWS_SECRET_ACCESS_KEY',
   ]);
 }
