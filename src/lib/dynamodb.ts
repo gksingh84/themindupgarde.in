@@ -9,16 +9,61 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { BlogPost } from '@/types/blog';
 
-const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || 'tmu_blogs';
-const AWS_REGION = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'ap-south-1';
+// Helper to check multiple environment variable aliases (Amplify blocks variables starting with "AWS_")
+function getEnvValue(keys: string[], fallback = ''): string {
+  for (const k of keys) {
+    const val = process.env[k];
+    if (val && typeof val === 'string' && val.trim() !== '') {
+      return val.trim();
+    }
+  }
+  return fallback;
+}
+
+export function getDynamoTableName(): string {
+  return getEnvValue(
+    ['DYNAMODB_TABLE_NAME', 'TMU_DYNAMODB_TABLE_NAME', 'DYNAMO_TABLE_NAME'],
+    'tmu_blogs'
+  );
+}
+
+export function getDynamoRegion(): string {
+  return getEnvValue(
+    [
+      'APP_AWS_REGION',
+      'MY_AWS_REGION',
+      'DYNAMO_REGION',
+      'AWS_REGION',
+      'AWS_DEFAULT_REGION',
+    ],
+    'ap-south-1'
+  );
+}
+
+export function getDynamoAccessKeyId(): string {
+  return getEnvValue([
+    'APP_AWS_ACCESS_KEY_ID',
+    'MY_AWS_ACCESS_KEY_ID',
+    'DYNAMO_ACCESS_KEY_ID',
+    'AWS_ACCESS_KEY_ID',
+  ]);
+}
+
+export function getDynamoSecretAccessKey(): string {
+  return getEnvValue([
+    'APP_AWS_SECRET_ACCESS_KEY',
+    'MY_AWS_SECRET_ACCESS_KEY',
+    'DYNAMO_SECRET_ACCESS_KEY',
+    'AWS_SECRET_ACCESS_KEY',
+  ]);
+}
 
 let docClientInstance: DynamoDBDocumentClient | null = null;
 
 export function isDynamoDBConfigured(): boolean {
-  // Configured if explicit table name and either explicit AWS creds or running in AWS Amplify / Lambda
-  const hasTable = Boolean(process.env.DYNAMODB_TABLE_NAME);
+  const hasTable = Boolean(getDynamoTableName());
   const hasExplicitCreds = Boolean(
-    process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+    getDynamoAccessKeyId() && getDynamoSecretAccessKey()
   );
   const isAwsLambda = Boolean(
     process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.AWS_EXECUTION_ENV
@@ -31,14 +76,16 @@ export function getDynamoDBClient(): DynamoDBDocumentClient {
   if (docClientInstance) return docClientInstance;
 
   const clientConfig: any = {
-    region: AWS_REGION,
+    region: getDynamoRegion(),
   };
 
-  // Only pass explicit credentials if provided in env vars (e.g. Amplify Console)
-  if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+  const accessKeyId = getDynamoAccessKeyId();
+  const secretAccessKey = getDynamoSecretAccessKey();
+
+  if (accessKeyId && secretAccessKey) {
     clientConfig.credentials = {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID.trim(),
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY.trim(),
+      accessKeyId,
+      secretAccessKey,
     };
   }
 
@@ -65,7 +112,7 @@ export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[]> {
   try {
     const client = getDynamoDBClient();
     const command = new ScanCommand({
-      TableName: TABLE_NAME,
+      TableName: getDynamoTableName(),
     });
     const response = await client.send(command);
 
@@ -91,9 +138,9 @@ export async function getBlogByIdOrSlugFromDynamoDB(
   try {
     const client = getDynamoDBClient();
 
-    // 1. First try direct Primary Key GetItem (fastest, O(1), 0.5 RCU)
+    // 1. Direct Primary Key GetItem (fastest, O(1), 0.5 RCU)
     const getCommand = new GetCommand({
-      TableName: TABLE_NAME,
+      TableName: getDynamoTableName(),
       Key: { id: idOrSlug },
     });
     const getRes = await client.send(getCommand);
@@ -101,9 +148,9 @@ export async function getBlogByIdOrSlugFromDynamoDB(
       return getRes.Item as BlogPost;
     }
 
-    // 2. If not found by ID, scan by slug or alias
+    // 2. Scan by slug or alias if not matching ID
     const scanCommand = new ScanCommand({
-      TableName: TABLE_NAME,
+      TableName: getDynamoTableName(),
       FilterExpression: 'slug = :s OR id = :s',
       ExpressionAttributeValues: {
         ':s': idOrSlug,
@@ -130,7 +177,7 @@ export async function saveBlogToDynamoDB(blog: BlogPost): Promise<boolean> {
   try {
     const client = getDynamoDBClient();
     const command = new PutCommand({
-      TableName: TABLE_NAME,
+      TableName: getDynamoTableName(),
       Item: {
         ...blog,
         updatedAt: new Date().toISOString(),
@@ -153,7 +200,7 @@ export async function deleteBlogFromDynamoDB(id: string): Promise<boolean> {
   try {
     const client = getDynamoDBClient();
     const command = new DeleteCommand({
-      TableName: TABLE_NAME,
+      TableName: getDynamoTableName(),
       Key: { id },
     });
     await client.send(command);
@@ -172,6 +219,7 @@ export async function saveBlogsBatchToDynamoDB(blogs: BlogPost[]): Promise<boole
 
   try {
     const client = getDynamoDBClient();
+    const tableName = getDynamoTableName();
     const CHUNK_SIZE = 25;
 
     for (let i = 0; i < blogs.length; i += CHUNK_SIZE) {
@@ -187,7 +235,7 @@ export async function saveBlogsBatchToDynamoDB(blogs: BlogPost[]): Promise<boole
 
       const batchCommand = new BatchWriteCommand({
         RequestItems: {
-          [TABLE_NAME]: putRequests,
+          [tableName]: putRequests,
         },
       });
 
@@ -210,7 +258,7 @@ export async function seedDynamoDBIfEmpty(seedBlogs: BlogPost[]): Promise<boolea
   try {
     const existing = await getAllBlogsFromDynamoDB();
     if (existing.length === 0) {
-      console.log(`DynamoDB table ${TABLE_NAME} is empty. Seeding ${seedBlogs.length} initial blogs...`);
+      console.log(`DynamoDB table ${getDynamoTableName()} is empty. Seeding ${seedBlogs.length} initial blogs...`);
       return await saveBlogsBatchToDynamoDB(seedBlogs);
     }
     return true;
