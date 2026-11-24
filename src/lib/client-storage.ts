@@ -99,10 +99,14 @@ export const ClientStorage = {
   validateAdminPassword(entered: string): boolean {
     if (!entered) return false;
     const custom = this.getCustomAdminPassword();
-    if (custom && entered === custom) return true;
+    if (custom) {
+      // Once a custom password is set, ONLY the custom password is valid.
+      // The default password ('admin123') is STRICTLY DISABLED and REJECTED!
+      return entered === custom;
+    }
+    // Only when no custom password exists in this browser:
     if (process.env.NEXT_PUBLIC_ADMIN_PASSWORD && entered === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) return true;
-    // Default fallback
-    if (!custom && entered === 'admin123') return true;
+    if (entered === 'admin123') return true;
     return false;
   },
 

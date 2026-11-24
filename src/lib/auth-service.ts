@@ -1,8 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import crypto from 'crypto';
 
 const AUTH_FILE = path.join(process.cwd(), 'src/data/auth.json');
+const TMP_AUTH_FILE = path.join(os.tmpdir(), 'tmu_auth.json');
 const DEFAULT_PASSWORD = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123';
 
 export interface AuthConfig {
@@ -16,6 +18,20 @@ function hashPassword(password: string): string {
 }
 
 export function getAuthConfig(): AuthConfig {
+  // 1. Check TMP_AUTH_FILE (writable on AWS Lambda / Amplify)
+  try {
+    if (fs.existsSync(TMP_AUTH_FILE)) {
+      const data = fs.readFileSync(TMP_AUTH_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (parsed && parsed.passwordHash) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('Error reading tmp auth config:', err);
+  }
+
+  // 2. Check repository AUTH_FILE
   try {
     if (fs.existsSync(AUTH_FILE)) {
       const data = fs.readFileSync(AUTH_FILE, 'utf-8');
@@ -28,7 +44,7 @@ export function getAuthConfig(): AuthConfig {
     console.error('Error reading auth.json:', err);
   }
 
-  // Fallback to default password
+  // 3. Fallback to default password (only when no custom config exists)
   return {
     passwordHash: hashPassword(DEFAULT_PASSWORD),
     isCustom: false,
@@ -41,17 +57,48 @@ export function verifyAdminPassword(password: string): boolean {
   const config = getAuthConfig();
   const inputHash = hashPassword(password);
 
-  // Match hashed password
-  if (inputHash === config.passwordHash) {
-    return true;
+  // If a custom password has been set, ONLY the custom password hash matches.
+  // The default password is STRICTLY REJECTED and disabled!
+  if (config.isCustom) {
+    return inputHash === config.passwordHash;
   }
 
-  // Also support default password if not custom
-  if (!config.isCustom && password.trim() === DEFAULT_PASSWORD) {
-    return true;
+  // Default password only matches when NO custom password exists
+  return inputHash === config.passwordHash || password.trim() === DEFAULT_PASSWORD;
+}
+
+export function setAdminPasswordDirect(newPassword: string): boolean {
+  if (!newPassword || newPassword.trim().length < 6) return false;
+
+  const updatedConfig: AuthConfig = {
+    passwordHash: hashPassword(newPassword),
+    isCustom: true,
+    updatedAt: new Date().toISOString(),
+  };
+
+  let saved = false;
+
+  // 1. Write to TMP_AUTH_FILE (always succeeds on Lambda / Amplify)
+  try {
+    fs.writeFileSync(TMP_AUTH_FILE, JSON.stringify(updatedConfig, null, 2), 'utf-8');
+    saved = true;
+  } catch (err) {
+    console.error('Error writing tmp auth.json:', err);
   }
 
-  return false;
+  // 2. Attempt write to project AUTH_FILE
+  try {
+    const dir = path.dirname(AUTH_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(AUTH_FILE, JSON.stringify(updatedConfig, null, 2), 'utf-8');
+    saved = true;
+  } catch (err) {
+    // Expected EROFS on serverless Lambda
+  }
+
+  return saved;
 }
 
 export function changeAdminPassword(
@@ -70,21 +117,10 @@ export function changeAdminPassword(
     return { success: false, error: 'Current password is incorrect.' };
   }
 
-  const updatedConfig: AuthConfig = {
-    passwordHash: hashPassword(newPassword),
-    isCustom: true,
-    updatedAt: new Date().toISOString(),
-  };
-
-  try {
-    const dir = path.dirname(AUTH_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(AUTH_FILE, JSON.stringify(updatedConfig, null, 2), 'utf-8');
+  const success = setAdminPasswordDirect(newPassword);
+  if (success) {
     return { success: true };
-  } catch (err: any) {
-    console.error('Error writing auth.json:', err);
-    return { success: false, error: 'Failed to write updated password to server.' };
   }
+
+  return { success: false, error: 'Failed to write updated password to server.' };
 }

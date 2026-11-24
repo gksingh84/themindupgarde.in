@@ -106,6 +106,11 @@ export function ChangePasswordModal({
         const isClientValid = ClientStorage.validateAdminPassword(currentPassword);
         if (isClientValid) {
           ClientStorage.setCustomAdminPassword(newPassword);
+          fetch('/api/admin/auth', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ direct: true, newPassword }),
+          }).catch(() => {});
           showToast('Admin password updated successfully!', 'success');
           if (onPasswordChanged) onPasswordChanged();
           onClose();
@@ -117,6 +122,11 @@ export function ChangePasswordModal({
 
       // Synchronize client storage
       ClientStorage.setCustomAdminPassword(newPassword);
+      fetch('/api/admin/auth', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direct: true, newPassword }),
+      }).catch(() => {});
       showToast('Admin password updated successfully!', 'success');
       if (onPasswordChanged) onPasswordChanged();
       onClose();

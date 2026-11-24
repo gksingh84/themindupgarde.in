@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthConfig, verifyAdminPassword, changeAdminPassword } from '@/lib/auth-service';
+import { getAuthConfig, verifyAdminPassword, changeAdminPassword, setAdminPasswordDirect } from '@/lib/auth-service';
 
 export async function GET() {
   const config = getAuthConfig();
@@ -12,7 +12,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { password } = body;
+    const { password, syncCustom } = body;
 
     if (!password) {
       return NextResponse.json({ success: false, error: 'Password is required' }, { status: 400 });
@@ -20,6 +20,9 @@ export async function POST(req: NextRequest) {
 
     const isValid = verifyAdminPassword(password);
     if (isValid) {
+      if (syncCustom) {
+        setAdminPasswordDirect(password);
+      }
       return NextResponse.json({ success: true, message: 'Authenticated successfully' });
     } else {
       return NextResponse.json({ success: false, error: 'Incorrect admin password' }, { status: 401 });
@@ -32,7 +35,15 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { currentPassword, newPassword } = body;
+    const { currentPassword, newPassword, direct } = body;
+
+    if (direct && newPassword && newPassword.length >= 6) {
+      const ok = setAdminPasswordDirect(newPassword);
+      return NextResponse.json({
+        success: ok,
+        message: 'Admin password updated.',
+      });
+    }
 
     const result = changeAdminPassword(currentPassword, newPassword);
 

@@ -71,14 +71,26 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
     setIsAuthenticated(ClientStorage.isAdminAuthenticated());
     const merged = ClientStorage.getMergedBlogs(initialBlogs);
     setBlogs(merged);
-    fetch('/api/admin/auth')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d && typeof d.isCustom === 'boolean') {
-          setIsDefaultPassword(!d.isCustom);
-        }
-      })
-      .catch(() => {});
+
+    const customPass = ClientStorage.getCustomAdminPassword();
+    if (customPass) {
+      setIsDefaultPassword(false);
+      // Synchronize server cache with the custom password
+      fetch('/api/admin/auth', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direct: true, newPassword: customPass }),
+      }).catch(() => {});
+    } else {
+      fetch('/api/admin/auth')
+        .then((r) => r.json())
+        .then((d) => {
+          if (d && typeof d.isCustom === 'boolean') {
+            setIsDefaultPassword(!d.isCustom);
+          }
+        })
+        .catch(() => {});
+    }
   }, [initialBlogs]);
 
   // Fetch subscribers & settings when authenticated
@@ -115,6 +127,29 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const customPass = ClientStorage.getCustomAdminPassword();
+
+    // 1. If a custom password is set in this browser, strictly enforce it!
+    if (customPass) {
+      if (password === customPass) {
+        ClientStorage.setAdminAuthenticated(true);
+        setIsAuthenticated(true);
+        showToast('Welcome back to The Mind Upgrade Editorial CMS!', 'success');
+        // Keep server synchronized
+        fetch('/api/admin/auth', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ direct: true, newPassword: customPass }),
+        }).catch(() => {});
+        return;
+      } else {
+        // Any incorrect password (including default 'admin123') is strictly rejected
+        showToast('Incorrect password. The default password has been disabled.', 'error');
+        return;
+      }
+    }
+
+    // 2. If no custom password in browser, query server
     try {
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
@@ -130,6 +165,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       }
     } catch {}
 
+    // 3. Fallback client validation when server is unreachable
     if (ClientStorage.validateAdminPassword(password)) {
       ClientStorage.setAdminAuthenticated(true);
       setIsAuthenticated(true);
