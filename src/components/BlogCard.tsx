@@ -7,6 +7,7 @@ import { ClientStorage } from '@/lib/client-storage';
 import { useToast } from '@/context/ToastContext';
 import { formatDateDDMMYYYY } from '@/lib/date-utils';
 import { Clock, Bookmark, Share2, ArrowUpRight, Heart, Sparkles } from 'lucide-react';
+import { ShareModal } from '@/components/ShareModal';
 
 interface BlogCardProps {
   post: BlogPost;
@@ -17,6 +18,7 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [hasLiked, setHasLiked] = useState(false);
   const [likes, setLikes] = useState(post.likes || 0);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -63,20 +65,15 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
   const handleShare = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (typeof window !== 'undefined') {
-      const url = `${window.location.origin}/blog/${post.slug}`;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(url);
-        showToast('Article link copied to clipboard!', 'success');
-      }
-    }
+    setIsShareOpen(true);
   };
 
   if (featured) {
     return (
-      <article className="group relative rounded-3xl overflow-hidden bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 hover:border-amberBrand/60 transition-all duration-300 shadow-editorial hover:shadow-editorial-hover grid grid-cols-1 lg:grid-cols-12 gap-0">
-        
-        {/* Featured Image Column */}
+      <>
+        <article className="group relative rounded-3xl overflow-hidden bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 hover:border-amberBrand/60 transition-all duration-300 shadow-editorial hover:shadow-editorial-hover grid grid-cols-1 lg:grid-cols-12 gap-0">
+          
+          {/* Featured Image Column */}
         <div className="lg:col-span-7 relative min-h-[280px] lg:min-h-[420px] overflow-hidden bg-slate-100 dark:bg-navy-950 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-navy-800">
           <img
             src={post.coverImage}
@@ -188,12 +185,15 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
           </div>
         </div>
 
-      </article>
+        </article>
+        <ShareModal isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} post={post} />
+      </>
     );
   }
 
   return (
-    <article className="group flex flex-col justify-between rounded-2xl bg-white dark:bg-navy-900 border border-slate-200/90 dark:border-navy-700 hover:border-amberBrand/60 transition-all duration-300 shadow-editorial hover:shadow-editorial-hover hover:-translate-y-1 overflow-hidden">
+    <>
+      <article className="group flex flex-col justify-between rounded-2xl bg-white dark:bg-navy-900 border border-slate-200/90 dark:border-navy-700 hover:border-amberBrand/60 transition-all duration-300 shadow-editorial hover:shadow-editorial-hover hover:-translate-y-1 overflow-hidden">
       <div>
         {/* Cover Thumbnail */}
         <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-100 dark:bg-navy-950 border-b border-slate-200 dark:border-navy-800">
@@ -311,5 +311,7 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
         </div>
       </div>
     </article>
-  );
+    <ShareModal isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} post={post} />
+  </>
+);
 }

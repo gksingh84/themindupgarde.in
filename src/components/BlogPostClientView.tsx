@@ -6,6 +6,7 @@ import { BlogPost, Comment } from '@/types/blog';
 import { ClientStorage } from '@/lib/client-storage';
 import { useToast } from '@/context/ToastContext';
 import { formatDateDDMMYYYY } from '@/lib/date-utils';
+import { ShareModal } from '@/components/ShareModal';
 import {
   Clock,
   Heart,
@@ -54,6 +55,7 @@ export function BlogPostClientView({ post, relatedPosts }: BlogPostClientViewPro
 
   // Newsletter in post
   const [inlineEmail, setInlineEmail] = useState('');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { showToast } = useToast();
 
   // Scroll Progress and Back-to-Top
@@ -190,6 +192,15 @@ export function BlogPostClientView({ post, relatedPosts }: BlogPostClientViewPro
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
+  const handleShareFacebook = () => {
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleShareInstagram = () => {
+    setIsShareModalOpen(true);
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -313,7 +324,7 @@ export function BlogPostClientView({ post, relatedPosts }: BlogPostClientViewPro
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap justify-center">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-amberBrand" />
                 <span>Published {formatDateDDMMYYYY(post.publishedAt)}</span>
@@ -323,6 +334,16 @@ export function BlogPostClientView({ post, relatedPosts }: BlogPostClientViewPro
                 <Clock className="w-3.5 h-3.5 text-amberBrand" />
                 <span>{post.readTime}</span>
               </span>
+              <span>•</span>
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="flex items-center gap-1.5 text-charcoal-700 dark:text-slate-300 hover:text-amberBrand transition-colors cursor-pointer font-bold"
+                title="Share article"
+                aria-label="Share article"
+              >
+                <Share2 className="w-3.5 h-3.5 text-amberBrand" />
+                <span>Share</span>
+              </button>
             </div>
           </div>
 
@@ -494,7 +515,7 @@ export function BlogPostClientView({ post, relatedPosts }: BlogPostClientViewPro
               </div>
 
               {/* Share Suite */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold text-charcoal-500 dark:text-slate-400 mr-1">Share:</span>
                 <button
                   onClick={handleShareWhatsApp}
@@ -505,6 +526,14 @@ export function BlogPostClientView({ post, relatedPosts }: BlogPostClientViewPro
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.144 4.178 4.287-1.123z"/></svg>
                 </button>
                 <button
+                  onClick={handleShareTwitter}
+                  className="p-2 rounded-lg bg-slate-100 dark:bg-navy-800 hover:text-amberBrand transition-colors cursor-pointer"
+                  title="Share on X"
+                  aria-label="Share on X"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </button>
+                <button
                   onClick={handleShareLinkedIn}
                   className="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 transition-colors cursor-pointer"
                   title="Share on LinkedIn"
@@ -513,12 +542,29 @@ export function BlogPostClientView({ post, relatedPosts }: BlogPostClientViewPro
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
                 </button>
                 <button
-                  onClick={handleShareTwitter}
-                  className="p-2 rounded-lg bg-slate-100 dark:bg-navy-800 hover:text-amberBrand transition-colors cursor-pointer"
-                  title="Share on X"
-                  aria-label="Share on X"
+                  onClick={handleShareFacebook}
+                  className="p-2 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-[#1877F2] transition-colors cursor-pointer"
+                  title="Share on Facebook"
+                  aria-label="Share on Facebook"
                 >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.82 0-1.611.162-2.007.606-.396.444-.45 1.149-.45 2.115v1.264h4.354l-.57 3.667h-3.784v7.98c5.44-.757 9.61-5.438 9.61-11.085C24 6.012 18.627.639 12 .639S0 6.012 0 12.606c0 5.647 4.17 10.328 9.101 11.085z"/></svg>
+                </button>
+                <button
+                  onClick={handleShareInstagram}
+                  className="p-2 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 transition-colors cursor-pointer"
+                  title="Share on Instagram"
+                  aria-label="Share on Instagram"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                </button>
+                <button
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="px-2.5 py-2 rounded-lg bg-amberBrand/15 hover:bg-amberBrand/25 text-amberBrand text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                  title="All Sharing Options"
+                  aria-label="All Sharing Options"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>All</span>
                 </button>
                 <button
                   onClick={handleCopyUrl}
@@ -651,6 +697,19 @@ export function BlogPostClientView({ post, relatedPosts }: BlogPostClientViewPro
           <ChevronUp className="w-5 h-5" />
         </button>
       )}
+
+      {/* Share Modal Dialog */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        post={{
+          title: post.title,
+          slug: post.slug,
+          coverImage: post.coverImage,
+          category: post.category,
+          readTime: post.readTime,
+        }}
+      />
     </>
   );
 }
