@@ -213,4 +213,11 @@ export const ClientStorage = {
     downloadAnchor.click();
     downloadAnchor.remove();
   },
+
+  // Reset local browser overrides to live server state
+  resetToLiveServer(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(DELETED_BLOGS_KEY);
+    localStorage.removeItem(CUSTOM_BLOGS_KEY);
+  },
 };

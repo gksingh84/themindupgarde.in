@@ -646,6 +646,22 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                 <Download className="w-3.5 h-3.5 text-amberBrand" />
                 <span className="hidden sm:inline">Export JSON</span>
               </button>
+
+              <button
+                onClick={() => {
+                  if (confirm('Sync with live server? This will clear any uncommitted browser-local draft overrides so your browser matches the live production server 100%.')) {
+                    ClientStorage.resetToLiveServer();
+                    setBlogs(initialBlogs);
+                    showToast('Synced with live server!', 'success');
+                    window.location.reload();
+                  }
+                }}
+                className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite hover:text-amberBrand transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                title="Sync / Refresh to match live server"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-amberBrand" />
+                <span className="hidden sm:inline">Sync Live</span>
+              </button>
             </div>
           </div>
 
