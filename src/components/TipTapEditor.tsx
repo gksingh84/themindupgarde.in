@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import LinkExtension from '@tiptap/extension-link';
@@ -180,7 +180,23 @@ const IndentExtension = Extension.create({
   },
 });
 
-// Custom TableCell and TableHeader allowing custom inline styles (height, padding, width)
+// Custom TableRow, TableCell, and TableHeader allowing custom inline styles (height, padding, width)
+const CustomTableRow = TableRow.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('style'),
+        renderHTML: (attributes) => {
+          if (!attributes.style) return {};
+          return { style: attributes.style };
+        },
+      },
+    };
+  },
+});
+
 const CustomTableCell = TableCell.extend({
   addAttributes() {
     return {
@@ -231,6 +247,9 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
   const [tableHeader, setTableHeader] = useState(true);
   const [showRowHeightMenu, setShowRowHeightMenu] = useState(false);
   const [showColWidthMenu, setShowColWidthMenu] = useState(false);
+  const [customRowHeightInput, setCustomRowHeightInput] = useState('44');
+  const [customColWidthInput, setCustomColWidthInput] = useState('180');
+  const [applyRowToAll, setApplyRowToAll] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -244,7 +263,7 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
           class: 'editorial-table',
         },
       }),
-      TableRow,
+      CustomTableRow,
       CustomTableHeader,
       CustomTableCell,
       LinkExtension.configure({
@@ -411,66 +430,231 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
     setShowTableModal(false);
   };
 
-  const setCellHeightPreset = (preset: 'compact' | 'normal' | 'spacious' | 'tall' | 'custom') => {
-    let padding = '0.75rem 1rem';
-    let minHeight = '48px';
+  const applyRowHeight = (heightPx: number, applyToAll = false) => {
+    if (!editor) return;
+    const h = Math.max(24, Math.min(300, Math.round(heightPx)));
+    const paddingY = Math.max(3, Math.min(24, Math.round((h - 20) / 4)));
+    const heightStyle = `height: ${h}px; min-height: ${h}px; padding-top: ${paddingY}px; padding-bottom: ${paddingY}px;`;
 
-    if (preset === 'compact') {
-      padding = '0.4rem 0.6rem';
-      minHeight = '32px';
-    } else if (preset === 'spacious') {
-      padding = '1.25rem 1.5rem';
-      minHeight = '64px';
-    } else if (preset === 'tall') {
-      padding = '1.5rem 1.75rem';
-      minHeight = '80px';
-    } else if (preset === 'custom') {
-      const val = window.prompt('Enter row minimum height in pixels (e.g. 60):', '50');
-      if (!val) return;
-      const num = parseInt(val, 10);
-      if (!isNaN(num) && num > 10) {
-        minHeight = `${num}px`;
-        padding = `${Math.max(4, Math.round(num / 4))}px 1rem`;
+    const { state, dispatch } = editor.view;
+    const { selection } = state;
+    let tr = state.tr;
+
+    if (applyToAll) {
+      let tablePos = -1;
+      let tableNode: any = null;
+      for (let d = selection.$from.depth; d > 0; d--) {
+        if (selection.$from.node(d).type.name === 'table') {
+          tablePos = selection.$from.before(d);
+          tableNode = selection.$from.node(d);
+          break;
+        }
+      }
+      if (tableNode && tablePos >= 0) {
+        let curRowPos = tablePos + 1;
+        tableNode.forEach((rowNode: any) => {
+          tr = tr.setNodeMarkup(curRowPos, undefined, {
+            ...rowNode.attrs,
+            style: `height: ${h}px;`,
+          });
+          let curCellPos = curRowPos + 1;
+          rowNode.forEach((cellNode: any) => {
+            const curStyle = cellNode.attrs.style || '';
+            const cleaned = curStyle
+              .replace(/(min-)?height\s*:\s*[^;]+;?/gi, '')
+              .replace(/padding-(top|bottom)\s*:\s*[^;]+;?/gi, '')
+              .trim();
+            const newStyle = cleaned ? `${cleaned} ${heightStyle}` : heightStyle;
+            tr = tr.setNodeMarkup(curCellPos, undefined, {
+              ...cellNode.attrs,
+              style: newStyle,
+            });
+            curCellPos += cellNode.nodeSize;
+          });
+          curRowPos += rowNode.nodeSize;
+        });
+        dispatch(tr);
+      }
+    } else {
+      let rowPos = -1;
+      let rowNode: any = null;
+      for (let d = selection.$from.depth; d > 0; d--) {
+        if (selection.$from.node(d).type.name === 'tableRow') {
+          rowPos = selection.$from.before(d);
+          rowNode = selection.$from.node(d);
+          break;
+        }
+      }
+      if (rowNode && rowPos >= 0) {
+        tr = tr.setNodeMarkup(rowPos, undefined, {
+          ...rowNode.attrs,
+          style: `height: ${h}px;`,
+        });
+        let curCellPos = rowPos + 1;
+        rowNode.forEach((cellNode: any) => {
+          const curStyle = cellNode.attrs.style || '';
+          const cleaned = curStyle
+            .replace(/(min-)?height\s*:\s*[^;]+;?/gi, '')
+            .replace(/padding-(top|bottom)\s*:\s*[^;]+;?/gi, '')
+            .trim();
+          const newStyle = cleaned ? `${cleaned} ${heightStyle}` : heightStyle;
+          tr = tr.setNodeMarkup(curCellPos, undefined, {
+            ...cellNode.attrs,
+            style: newStyle,
+          });
+          curCellPos += cellNode.nodeSize;
+        });
+        dispatch(tr);
+      } else {
+        editor.chain().focus().setCellAttribute('style', heightStyle).run();
       }
     }
-
-    editor
-      .chain()
-      .focus()
-      .setCellAttribute('style', `padding: ${padding}; min-height: ${minHeight}; height: ${minHeight};`)
-      .run();
-    setShowRowHeightMenu(false);
   };
 
-  const setColumnWidthPreset = (preset: 'auto' | 'compact' | 'medium' | 'wide' | 'custom') => {
-    let widthPx = 0;
-    if (preset === 'compact') widthPx = 120;
-    else if (preset === 'medium') widthPx = 200;
-    else if (preset === 'wide') widthPx = 320;
-    else if (preset === 'custom') {
-      const val = window.prompt('Enter column width in pixels (e.g. 180):', '150');
-      if (!val) return;
-      const num = parseInt(val, 10);
-      if (!isNaN(num) && num > 20) widthPx = num;
-    }
-
-    if (widthPx > 0) {
-      editor
-        .chain()
-        .focus()
-        .setCellAttribute('colwidth', [widthPx])
-        .setCellAttribute('style', `width: ${widthPx}px; min-width: ${widthPx}px;`)
-        .run();
-    } else {
+  const applyColWidth = (widthPx: number) => {
+    if (!editor) return;
+    if (widthPx <= 0) {
       editor
         .chain()
         .focus()
         .setCellAttribute('colwidth', null)
         .setCellAttribute('style', '')
         .run();
+      return;
     }
+    const w = Math.max(30, Math.min(800, Math.round(widthPx)));
+    const widthStyle = `width: ${w}px; min-width: ${w}px;`;
+
+    editor
+      .chain()
+      .focus()
+      .setCellAttribute('colwidth', [w])
+      .setCellAttribute('style', widthStyle)
+      .run();
+  };
+
+  const setCellHeightPreset = (preset: 'compact' | 'normal' | 'spacious' | 'tall') => {
+    let px = 44;
+    if (preset === 'compact') px = 32;
+    else if (preset === 'spacious') px = 60;
+    else if (preset === 'tall') px = 80;
+
+    setCustomRowHeightInput(String(px));
+    applyRowHeight(px, applyRowToAll);
+    setShowRowHeightMenu(false);
+  };
+
+  const setColumnWidthPreset = (preset: 'auto' | 'compact' | 'medium' | 'wide') => {
+    let widthPx = 0;
+    if (preset === 'compact') widthPx = 110;
+    else if (preset === 'medium') widthPx = 180;
+    else if (preset === 'wide') widthPx = 280;
+
+    setCustomColWidthInput(widthPx > 0 ? String(widthPx) : 'auto');
+    applyColWidth(widthPx);
     setShowColWidthMenu(false);
   };
+
+  // Interactive mouse drag handler for table row heights
+  useEffect(() => {
+    if (!editor || !editor.view || !editor.view.dom) return;
+    const dom = editor.view.dom;
+
+    let isDraggingRow = false;
+    let targetRow: HTMLTableRowElement | null = null;
+    let startY = 0;
+    let startHeight = 0;
+    let activeCell: HTMLElement | null = null;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (isDraggingRow && targetRow) {
+        const deltaY = e.clientY - startY;
+        const newHeight = Math.max(26, Math.round(startHeight + deltaY));
+        targetRow.style.height = `${newHeight}px`;
+        const cells = targetRow.querySelectorAll('th, td');
+        cells.forEach((cell) => {
+          (cell as HTMLElement).style.height = `${newHeight}px`;
+          (cell as HTMLElement).style.minHeight = `${newHeight}px`;
+        });
+        return;
+      }
+
+      const target = (e.target as HTMLElement)?.closest('td, th') as HTMLElement | null;
+      if (!target || !dom.contains(target)) {
+        if (activeCell) {
+          activeCell.classList.remove('row-resize-active');
+          activeCell = null;
+        }
+        return;
+      }
+
+      const rect = target.getBoundingClientRect();
+      const isNearBottom = e.clientY >= rect.bottom - 6 && e.clientY <= rect.bottom + 2;
+
+      if (isNearBottom) {
+        dom.style.cursor = 'row-resize';
+        target.classList.add('row-resize-active');
+        activeCell = target;
+      } else {
+        if (!isDraggingRow) {
+          if (dom.style.cursor === 'row-resize') {
+            dom.style.cursor = '';
+          }
+          target.classList.remove('row-resize-active');
+          if (activeCell === target) activeCell = null;
+        }
+      }
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement)?.closest('td, th') as HTMLElement | null;
+      if (!target || !dom.contains(target)) return;
+      const rect = target.getBoundingClientRect();
+      const isNearBottom = e.clientY >= rect.bottom - 6 && e.clientY <= rect.bottom + 2;
+
+      if (isNearBottom) {
+        e.preventDefault();
+        e.stopPropagation();
+        isDraggingRow = true;
+        targetRow = target.closest('tr');
+        if (targetRow) {
+          startY = e.clientY;
+          startHeight = targetRow.getBoundingClientRect().height;
+          document.body.style.userSelect = 'none';
+          document.body.style.cursor = 'row-resize';
+        }
+      }
+    };
+
+    const onMouseUp = (e: MouseEvent) => {
+      if (isDraggingRow && targetRow) {
+        const deltaY = e.clientY - startY;
+        const finalHeight = Math.max(26, Math.round(startHeight + deltaY));
+        isDraggingRow = false;
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        dom.style.cursor = '';
+        if (activeCell) {
+          activeCell.classList.remove('row-resize-active');
+          activeCell = null;
+        }
+
+        setCustomRowHeightInput(String(finalHeight));
+        applyRowHeight(finalHeight, false);
+        targetRow = null;
+      }
+    };
+
+    dom.addEventListener('mousemove', onMouseMove);
+    dom.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      dom.removeEventListener('mousemove', onMouseMove);
+      dom.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [editor, applyRowToAll]);
 
   return (
     <div className="rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 overflow-hidden shadow-sm flex flex-col h-[650px] sm:h-[720px] max-h-[82vh]">
@@ -935,8 +1119,11 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowRowHeightMenu((p) => !p)}
-                title="Adjust Row Height & Cell Padding"
+                onClick={() => {
+                  setShowRowHeightMenu((p) => !p);
+                  setShowColWidthMenu(false);
+                }}
+                title="Adjust Row Height Manually or with Presets (also drag row bottom borders directly)"
                 className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 flex items-center gap-1 border-l border-slate-200 dark:border-navy-800 cursor-pointer"
               >
                 <ArrowUpDown className="w-3 h-3 text-amberBrand" />
@@ -946,49 +1133,112 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
               {showRowHeightMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowRowHeightMenu(false)} />
-                  <div className="absolute left-0 mt-1 w-44 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in-50">
-                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Row Height / Padding
+                  <div className="absolute left-0 mt-1 w-60 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-xl z-50 p-2.5 space-y-2 animate-in fade-in-50 text-xs">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-navy-800">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Row Height (Manual)
+                      </span>
+                      <span className="text-[10px] text-amberBrand font-semibold">Type or Drag</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setCellHeightPreset('compact')}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-amber-50 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
-                    >
-                      <span>Compact</span>
-                      <span className="text-[10px] text-slate-400">32px</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCellHeightPreset('normal')}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-amber-50 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
-                    >
-                      <span>Standard</span>
-                      <span className="text-[10px] text-slate-400">48px</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCellHeightPreset('spacious')}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-amber-50 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
-                    >
-                      <span>Spacious</span>
-                      <span className="text-[10px] text-slate-400">64px</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCellHeightPreset('tall')}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-amber-50 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
-                    >
-                      <span>Tall</span>
-                      <span className="text-[10px] text-slate-400">80px</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCellHeightPreset('custom')}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amberBrand hover:bg-amber-50 dark:hover:bg-navy-800 border-t border-slate-100 dark:border-navy-800 cursor-pointer"
-                    >
-                      Custom Pixels...
-                    </button>
+
+                    {/* Manual Pixel Stepper */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = Math.max(24, (parseInt(customRowHeightInput, 10) || 44) - 5);
+                            setCustomRowHeightInput(String(next));
+                            applyRowHeight(next, applyRowToAll);
+                          }}
+                          className="px-2 py-1 bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 dark:hover:bg-navy-700 rounded font-bold text-xs"
+                          title="Decrease height by 5px"
+                        >
+                          -5
+                        </button>
+                        <div className="relative flex-1">
+                          <input
+                            type="number"
+                            value={customRowHeightInput}
+                            onChange={(e) => setCustomRowHeightInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const num = parseInt(customRowHeightInput, 10);
+                                if (!isNaN(num)) applyRowHeight(num, applyRowToAll);
+                              }
+                            }}
+                            className="w-full px-2 py-1 text-xs text-center border border-slate-200 dark:border-navy-700 rounded bg-slate-50 dark:bg-navy-950 font-bold"
+                            min="24"
+                            max="300"
+                          />
+                          <span className="absolute right-1.5 top-1 text-[10px] text-slate-400 pointer-events-none">px</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = Math.min(300, (parseInt(customRowHeightInput, 10) || 44) + 5);
+                            setCustomRowHeightInput(String(next));
+                            applyRowHeight(next, applyRowToAll);
+                          }}
+                          className="px-2 py-1 bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 dark:hover:bg-navy-700 rounded font-bold text-xs"
+                          title="Increase height by 5px"
+                        >
+                          +5
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const num = parseInt(customRowHeightInput, 10);
+                            if (!isNaN(num) && num >= 20) {
+                              applyRowHeight(num, applyRowToAll);
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-amberBrand hover:bg-amber-600 text-navy-950 font-bold text-[11px] rounded shadow-xs"
+                        >
+                          Set
+                        </button>
+                      </div>
+
+                      <label className="flex items-center gap-1.5 text-[10.5px] text-slate-600 dark:text-slate-400 cursor-pointer pt-0.5">
+                        <input
+                          type="checkbox"
+                          checked={applyRowToAll}
+                          onChange={(e) => setApplyRowToAll(e.target.checked)}
+                          className="rounded text-amberBrand"
+                        />
+                        <span>Apply to all rows in table</span>
+                      </label>
+                    </div>
+
+                    {/* Presets */}
+                    <div className="pt-1.5 border-t border-slate-100 dark:border-navy-800 space-y-0.5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pb-0.5">
+                        Height Presets
+                      </div>
+                      {[
+                        { label: 'Compact', px: 32 },
+                        { label: 'Standard', px: 44 },
+                        { label: 'Spacious', px: 60 },
+                        { label: 'Tall', px: 80 },
+                      ].map((item) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => {
+                            setCustomRowHeightInput(String(item.px));
+                            applyRowHeight(item.px, applyRowToAll);
+                          }}
+                          className="w-full text-left px-2 py-1 rounded hover:bg-amber-50 dark:hover:bg-navy-800 cursor-pointer flex justify-between items-center text-xs"
+                        >
+                          <span>{item.label}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">{item.px}px</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="pt-1 border-t border-slate-100 dark:border-navy-800 text-[10px] text-slate-400 italic">
+                      💡 Tip: You can also hover &amp; drag any row bottom border directly!
+                    </div>
                   </div>
                 </>
               )}
@@ -1029,8 +1279,11 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowColWidthMenu((p) => !p)}
-                title="Adjust Column Width (or drag column borders directly)"
+                onClick={() => {
+                  setShowColWidthMenu((p) => !p);
+                  setShowRowHeightMenu(false);
+                }}
+                title="Adjust Column Width Manually or with Presets (also drag column borders directly)"
                 className="px-2 py-1 rounded text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-navy-800 flex items-center gap-1 border-l border-slate-200 dark:border-navy-800 cursor-pointer"
               >
                 <ArrowLeftRight className="w-3 h-3 text-blue-600" />
@@ -1040,49 +1293,113 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
               {showColWidthMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowColWidthMenu(false)} />
-                  <div className="absolute left-0 mt-1 w-44 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in-50">
-                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Column Width
+                  <div className="absolute left-0 mt-1 w-60 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-xl z-50 p-2.5 space-y-2 animate-in fade-in-50 text-xs">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-navy-800">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Column Width (Manual)
+                      </span>
+                      <span className="text-[10px] text-blue-500 font-semibold">Type or Drag</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setColumnWidthPreset('auto')}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
-                    >
-                      <span>Auto (Equal)</span>
-                      <span className="text-[10px] text-slate-400">Fit</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setColumnWidthPreset('compact')}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
-                    >
-                      <span>Narrow</span>
-                      <span className="text-[10px] text-slate-400">120px</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setColumnWidthPreset('medium')}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
-                    >
-                      <span>Medium</span>
-                      <span className="text-[10px] text-slate-400">200px</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setColumnWidthPreset('wide')}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer flex justify-between"
-                    >
-                      <span>Wide</span>
-                      <span className="text-[10px] text-slate-400">320px</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setColumnWidthPreset('custom')}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-600 hover:bg-slate-100 dark:hover:bg-navy-800 border-t border-slate-100 dark:border-navy-800 cursor-pointer"
-                    >
-                      Custom Pixels...
-                    </button>
+
+                    {/* Manual Pixel Stepper */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = Math.max(40, (parseInt(customColWidthInput, 10) || 160) - 10);
+                            setCustomColWidthInput(String(next));
+                            applyColWidth(next);
+                          }}
+                          className="px-2 py-1 bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 dark:hover:bg-navy-700 rounded font-bold text-xs"
+                          title="Decrease width by 10px"
+                        >
+                          -10
+                        </button>
+                        <div className="relative flex-1">
+                          <input
+                            type="number"
+                            value={customColWidthInput}
+                            onChange={(e) => setCustomColWidthInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const num = parseInt(customColWidthInput, 10);
+                                if (!isNaN(num)) applyColWidth(num);
+                              }
+                            }}
+                            className="w-full px-2 py-1 text-xs text-center border border-slate-200 dark:border-navy-700 rounded bg-slate-50 dark:bg-navy-950 font-bold"
+                            min="40"
+                            max="800"
+                          />
+                          <span className="absolute right-1.5 top-1 text-[10px] text-slate-400 pointer-events-none">px</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = Math.min(800, (parseInt(customColWidthInput, 10) || 160) + 10);
+                            setCustomColWidthInput(String(next));
+                            applyColWidth(next);
+                          }}
+                          className="px-2 py-1 bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 dark:hover:bg-navy-700 rounded font-bold text-xs"
+                          title="Increase width by 10px"
+                        >
+                          +10
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const num = parseInt(customColWidthInput, 10);
+                            if (!isNaN(num) && num >= 40) {
+                              applyColWidth(num);
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded shadow-xs"
+                        >
+                          Set
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Presets */}
+                    <div className="pt-1.5 border-t border-slate-100 dark:border-navy-800 space-y-0.5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pb-0.5">
+                        Width Presets
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomColWidthInput('auto');
+                          applyColWidth(0);
+                        }}
+                        className="w-full text-left px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer flex justify-between items-center text-xs"
+                      >
+                        <span>Auto (Equal Fit)</span>
+                        <span className="text-[10px] text-slate-400 font-mono">Fit</span>
+                      </button>
+                      {[
+                        { label: 'Narrow', px: 110 },
+                        { label: 'Medium', px: 180 },
+                        { label: 'Wide', px: 280 },
+                        { label: 'Extra Wide', px: 360 },
+                      ].map((item) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => {
+                            setCustomColWidthInput(String(item.px));
+                            applyColWidth(item.px);
+                          }}
+                          className="w-full text-left px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-navy-800 cursor-pointer flex justify-between items-center text-xs"
+                        >
+                          <span>{item.label}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">{item.px}px</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="pt-1 border-t border-slate-100 dark:border-navy-800 text-[10px] text-slate-400 italic">
+                      💡 Tip: You can also hover &amp; drag column borders directly!
+                    </div>
                   </div>
                 </>
               )}

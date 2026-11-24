@@ -329,12 +329,12 @@
   border-left-color: #E5A64B !important;
 }
 
-/* Table Styles in Editor and Editorial View */
+/* Table Styles in Editor and Editorial View with Reduced Vertical Spacing */
 .prose-editorial table,
 .ProseMirror table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1.75rem 0;
+  margin: 0.65rem 0 !important;
   font-size: 0.925rem;
   overflow: hidden;
   border-radius: 0.75rem;
@@ -346,10 +346,10 @@
 .prose-editorial td,
 .ProseMirror th,
 .ProseMirror td {
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 0.9rem;
   border: 1px solid rgba(115, 123, 133, 0.2);
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
   box-sizing: border-box;
   position: relative;
   min-width: 2rem;
@@ -403,9 +403,40 @@
   cursor: col-resize;
 }
 
-.tableWrapper {
+/* Row Resizing Indicator */
+.ProseMirror td.row-resize-active,
+.ProseMirror th.row-resize-active {
+  border-bottom: 2.5px solid #d97706 !important;
+}
+
+.tableWrapper,
+.table-container {
   overflow-x: auto;
-  margin: 1.5rem 0;
+  margin: 0.65rem 0 !important;
+}
+
+.tableWrapper table,
+.table-container table {
+  margin: 0 !important;
+}
+
+/* Eliminate empty margin gap of paragraphs or headings immediately surrounding tables */
+.prose-editorial p:has(+ .tableWrapper),
+.ProseMirror p:has(+ .tableWrapper),
+.prose-editorial p:has(+ table),
+.ProseMirror p:has(+ table),
+.prose-editorial p:has(+ .table-container),
+.ProseMirror p:has(+ .table-container) {
+  margin-bottom: 0.5rem !important;
+}
+
+.prose-editorial .tableWrapper + *,
+.ProseMirror .tableWrapper + *,
+.prose-editorial table + *,
+.ProseMirror table + *,
+.prose-editorial .table-container + *,
+.ProseMirror .table-container + * {
+  margin-top: 0.65rem !important;
 }
 
 .prose-editorial code {
