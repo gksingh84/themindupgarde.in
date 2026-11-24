@@ -1,13 +1,18 @@
 import React from 'react';
-import { getBlogsServer, getEditorsPicks, getPopularBlogs, getFeaturedArticles } from '@/lib/blog-service';
+import {
+  getBlogsServerAsync,
+  getEditorsPicks,
+  getPopularBlogs,
+  getFeaturedArticles,
+} from '@/lib/blog-service';
 import { HomeClientView } from '@/components/HomeClientView';
 
 export const revalidate = 60; // ISR revalidate every 60 seconds
 
-export default function HomePage() {
-  const allBlogs = getBlogsServer();
+export default async function HomePage() {
+  const allBlogs = await getBlogsServerAsync();
   const publishedBlogs = allBlogs.filter((b) => b.status === 'published');
-  
+
   // Featured post: specifically selected or first featured or latest
   const featuredPosts = getFeaturedArticles(4);
   const featuredPost = featuredPosts[0] || publishedBlogs[0];

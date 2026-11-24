@@ -1,6 +1,5 @@
 import React from 'react';
-import Link from 'next/link';
-import { getBlogsServer } from '@/lib/blog-service';
+import { getBlogsServerAsync } from '@/lib/blog-service';
 import { BlogPost } from '@/types/blog';
 import { ArchiveClientView } from '@/components/ArchiveClientView';
 import { parseDate } from '@/lib/date-utils';
@@ -10,8 +9,8 @@ export const metadata = {
   description: 'Chronological archive of all articles published on The Mind Upgrade.',
 };
 
-export default function ArchivePage() {
-  const blogs = getBlogsServer().filter((b) => b.status === 'published');
+export default async function ArchivePage() {
+  const blogs = (await getBlogsServerAsync()).filter((b) => b.status === 'published');
 
   // Group blogs by Month & Year
   const grouped: Record<string, BlogPost[]> = {};

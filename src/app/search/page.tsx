@@ -1,5 +1,5 @@
 import React from 'react';
-import { getBlogsServer } from '@/lib/blog-service';
+import { getBlogsServerAsync } from '@/lib/blog-service';
 import { SearchClientView } from '@/components/SearchClientView';
 
 export const metadata = {
@@ -13,7 +13,7 @@ export default async function SearchResultsPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const allBlogs = getBlogsServer().filter((b) => b.status === 'published');
+  const allBlogs = (await getBlogsServerAsync()).filter((b) => b.status === 'published');
 
   return <SearchClientView initialQuery={q} initialBlogs={allBlogs} />;
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { CATEGORIES } from '@/data/categories';
-import { getBlogsServer } from '@/lib/blog-service';
+import { getBlogsServerAsync } from '@/lib/blog-service';
 import { CategoryDetailClientView } from '@/components/CategoryDetailClientView';
 
 export async function generateMetadata({
@@ -39,7 +39,7 @@ export default async function CategoryDetailPage({
     notFound();
   }
 
-  const allBlogs = getBlogsServer().filter((b) => b.status === 'published');
+  const allBlogs = (await getBlogsServerAsync()).filter((b) => b.status === 'published');
 
   return (
     <CategoryDetailClientView

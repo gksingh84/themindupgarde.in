@@ -1,5 +1,5 @@
 import React from 'react';
-import { getBlogsServer } from '@/lib/blog-service';
+import { getBlogsServerAsync } from '@/lib/blog-service';
 import { AdminStatsClient } from '@/components/AdminStatsClient';
 
 export const metadata = {
@@ -7,7 +7,7 @@ export const metadata = {
   description: 'View traffic statistics, reader engagement, top read blogs, likes, and comment metrics.',
 };
 
-export default function AdminStatsPage() {
-  const blogs = getBlogsServer();
+export default async function AdminStatsPage() {
+  const blogs = await getBlogsServerAsync();
   return <AdminStatsClient initialBlogs={blogs} />;
 }

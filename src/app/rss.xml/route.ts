@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getBlogsServer } from '@/lib/blog-service';
+import { getBlogsServerAsync } from '@/lib/blog-service';
 
 export async function GET() {
   const baseUrl = 'https://themindupgrade.in';
-  const blogs = getBlogsServer().filter((b) => b.status === 'published');
+  const blogs = (await getBlogsServerAsync()).filter((b) => b.status === 'published');
 
   const rssItems = blogs
     .map(

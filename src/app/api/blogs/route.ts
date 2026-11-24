@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getBlogsServer, saveBlogsServer } from '@/lib/blog-service';
+import { getBlogsServerAsync, saveBlogServerAsync } from '@/lib/blog-service';
 import { BlogPost } from '@/types/blog';
 import { formatDateDDMMYYYY, parseDate } from '@/lib/date-utils';
 
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const search = searchParams.get('search');
   const includeDrafts = searchParams.get('includeDrafts') === 'true';
 
-  let blogs = getBlogsServer();
+  let blogs = await getBlogsServerAsync();
 
   if (!includeDrafts) {
     blogs = blogs.filter((b) => b.status === 'published');
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const newBlog: Partial<BlogPost> = await request.json();
-    const blogs = getBlogsServer();
+    const blogs = await getBlogsServerAsync();
 
     const created: BlogPost = {
       id: newBlog.id || String(Date.now()),
@@ -68,19 +68,13 @@ export async function POST(request: Request) {
     // Check slug collision
     let slugCandidate = created.slug;
     let count = 1;
-    while (blogs.some((b) => b.slug === slugCandidate)) {
+    while (blogs.some((b) => b.slug === slugCandidate && b.id !== created.id)) {
       slugCandidate = `${created.slug}-${count++}`;
     }
     created.slug = slugCandidate;
 
-    blogs.push(created);
-    // Sort all blogs chronologically by publication date descending
-    blogs.sort((a, b) => {
-      const dateB = parseDate(b.publishedAt).getTime();
-      const dateA = parseDate(a.publishedAt).getTime();
-      return dateB - dateA;
-    });
-    saveBlogsServer(blogs);
+    // Save to DynamoDB and local fallback
+    await saveBlogServerAsync(created);
 
     // If published, trigger subscriber email notifications
     let notificationResult = null;

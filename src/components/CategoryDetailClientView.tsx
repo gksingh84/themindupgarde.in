@@ -79,7 +79,7 @@ function CategoryDetailContent({
     setActiveSub(searchParams?.get('sub') || initialSub || '');
   }, [searchParams, initialSub]);
 
-  // Merge client-side blogs (e.g. from Admin creation or edits) on mount
+  // Merge client-side blogs and fetch fresh blogs from DynamoDB cloud database
   useEffect(() => {
     try {
       const merged = ClientStorage.getMergedBlogs(initialBlogs).filter(
@@ -89,6 +89,19 @@ function CategoryDetailContent({
     } catch {
       // Fallback to initialBlogs
     }
+
+    // Refresh from live cloud database
+    fetch('/api/blogs')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((cloudBlogs) => {
+        if (Array.isArray(cloudBlogs) && cloudBlogs.length > 0) {
+          const fresh = ClientStorage.getMergedBlogs(cloudBlogs).filter(
+            (b) => b.status === 'published'
+          );
+          setAllBlogs(fresh);
+        }
+      })
+      .catch(() => {});
   }, [initialBlogs]);
 
   // All published blogs in this category

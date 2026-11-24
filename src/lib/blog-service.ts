@@ -5,14 +5,94 @@ import { BlogPost, ArticleRevision } from '@/types/blog';
 import initialBlogs from '@/data/blogs.json';
 import { prisma } from '@/lib/prisma';
 import { parseDate } from '@/lib/date-utils';
+import {
+  isDynamoDBConfigured,
+  getAllBlogsFromDynamoDB,
+  getBlogByIdOrSlugFromDynamoDB,
+  saveBlogToDynamoDB,
+  deleteBlogFromDynamoDB,
+  seedDynamoDBIfEmpty,
+} from '@/lib/dynamodb';
 
 const DATA_FILE = path.join(process.cwd(), 'src/data/blogs.json');
 const TMP_DATA_FILE = path.join(os.tmpdir(), 'tmu_blogs.json');
 
+// In-memory cache for fast SSR response and minimizing DynamoDB RCUs
+let cachedBlogs: BlogPost[] | null = null;
+let lastCacheTime = 0;
+const CACHE_TTL_MS = 15000; // 15 seconds
+
 /**
- * Reads blogs synchronously from blogs.json fallback with scheduled post auto-publish logic.
+ * Reads blogs asynchronously, prioritizing AWS DynamoDB if configured,
+ * with automatic fallback to JSON file.
+ */
+export async function getBlogsServerAsync(forceRefresh = false): Promise<BlogPost[]> {
+  const now = Date.now();
+  if (!forceRefresh && cachedBlogs && now - lastCacheTime < CACHE_TTL_MS) {
+    return cachedBlogs;
+  }
+
+  if (isDynamoDBConfigured()) {
+    try {
+      const dynamoBlogs = await getAllBlogsFromDynamoDB();
+      if (dynamoBlogs && dynamoBlogs.length > 0) {
+        // Auto-publish any scheduled posts whose scheduledAt has passed
+        const isoNow = new Date().toISOString();
+        let updated = false;
+        const processed = dynamoBlogs.map((b) => {
+          if (b.status === 'scheduled' && b.scheduledAt && b.scheduledAt <= isoNow) {
+            updated = true;
+            return { ...b, status: 'published' as const };
+          }
+          return b;
+        });
+
+        // Sort chronologically (newest first)
+        processed.sort((a, b) => {
+          const timeB = parseDate(b.publishedAt).getTime();
+          const timeA = parseDate(a.publishedAt).getTime();
+          return timeB - timeA;
+        });
+
+        cachedBlogs = processed;
+        lastCacheTime = now;
+
+        if (updated) {
+          // Asynchronously update published status in DynamoDB
+          Promise.all(processed.filter((b) => b.status === 'published').map(saveBlogToDynamoDB)).catch(
+            () => {}
+          );
+        }
+
+        return processed;
+      } else {
+        // Table exists but is empty -> Auto-seed with local blogs
+        const local = getBlogsServer();
+        seedDynamoDBIfEmpty(local).catch((e) => console.warn('Auto-seed DynamoDB warning:', e));
+        cachedBlogs = local;
+        lastCacheTime = now;
+        return local;
+      }
+    } catch (err) {
+      console.warn('DynamoDB read warning, falling back to JSON:', err);
+    }
+  }
+
+  // Fallback to local files
+  const fallback = getBlogsServer();
+  cachedBlogs = fallback;
+  lastCacheTime = now;
+  return fallback;
+}
+
+/**
+ * Reads blogs synchronously from in-memory cache or blogs.json fallback.
  */
 export function getBlogsServer(): BlogPost[] {
+  if (cachedBlogs && cachedBlogs.length > 0) {
+    return cachedBlogs;
+  }
+
   let blogs: BlogPost[] = [];
   try {
     if (fs.existsSync(TMP_DATA_FILE)) {
@@ -44,13 +124,15 @@ export function getBlogsServer(): BlogPost[] {
     saveBlogsServer(blogs);
   }
 
-  // Sort blogs chronologically by publication date descending (latest first, backdated posts in historical order)
+  // Sort blogs chronologically by publication date descending
   blogs.sort((a, b) => {
     const timeB = parseDate(b.publishedAt).getTime();
     const timeA = parseDate(a.publishedAt).getTime();
     return timeB - timeA;
   });
 
+  cachedBlogs = blogs;
+  lastCacheTime = Date.now();
   return blogs;
 }
 
@@ -59,6 +141,8 @@ export function getBlogsServer(): BlogPost[] {
  */
 export function saveBlogsServer(blogs: BlogPost[]): boolean {
   let saved = false;
+  cachedBlogs = blogs;
+  lastCacheTime = Date.now();
 
   // 1. Always save to TMP_DATA_FILE (writable on AWS Lambda / Amplify)
   try {
@@ -81,6 +165,58 @@ export function saveBlogsServer(blogs: BlogPost[]): boolean {
   }
 
   return saved;
+}
+
+/**
+ * Saves or updates a single blog post across DynamoDB, in-memory cache, and fallback files.
+ */
+export async function saveBlogServerAsync(blog: BlogPost): Promise<boolean> {
+  // 1. Save to DynamoDB if configured
+  if (isDynamoDBConfigured()) {
+    try {
+      await saveBlogToDynamoDB(blog);
+    } catch (e) {
+      console.warn('DynamoDB save warning:', e);
+    }
+  }
+
+  // 2. Update local state
+  const current = getBlogsServer();
+  const index = current.findIndex((b) => b.id === blog.id || b.slug === blog.slug);
+  if (index > -1) {
+    current[index] = blog;
+  } else {
+    current.unshift(blog);
+  }
+
+  // Keep sorted chronologically
+  current.sort((a, b) => {
+    const timeB = parseDate(b.publishedAt).getTime();
+    const timeA = parseDate(a.publishedAt).getTime();
+    return timeB - timeA;
+  });
+
+  saveBlogsServer(current);
+  return true;
+}
+
+/**
+ * Asynchronous helper to find blog by slug or ID with DynamoDB support.
+ */
+export async function getBlogBySlugServerAsync(slug: string): Promise<BlogPost | undefined> {
+  if (!slug) return undefined;
+  const decoded = decodeURIComponent(slug).toLowerCase().trim();
+
+  if (isDynamoDBConfigured()) {
+    try {
+      const fromDb = await getBlogByIdOrSlugFromDynamoDB(decoded);
+      if (fromDb) return fromDb;
+    } catch (e) {
+      console.warn('DynamoDB getBlog warning:', e);
+    }
+  }
+
+  return getBlogBySlugServer(slug);
 }
 
 /**
@@ -128,11 +264,19 @@ export function getBlogByIdServer(id: string): BlogPost | undefined {
 }
 
 /**
- * Delete a blog post by id from both JSON and DB.
+ * Delete a blog post by id from DynamoDB, JSON and Prisma DB.
  */
 export async function deleteBlogServer(id: string): Promise<boolean> {
+  if (isDynamoDBConfigured()) {
+    try {
+      await deleteBlogFromDynamoDB(id);
+    } catch (e) {
+      console.warn('DynamoDB delete warning:', e);
+    }
+  }
+
   const blogs = getBlogsServer();
-  const filtered = blogs.filter((b) => b.id !== id);
+  const filtered = blogs.filter((b) => b.id !== id && b.slug !== id);
   const success = saveBlogsServer(filtered);
 
   if (process.env.DATABASE_URL) {
@@ -154,6 +298,9 @@ export function incrementBlogViews(slugOrId: string): number {
   if (blog) {
     blog.views = (blog.views || 0) + 1;
     saveBlogsServer(blogs);
+    if (isDynamoDBConfigured()) {
+      saveBlogToDynamoDB(blog).catch(() => {});
+    }
     return blog.views;
   }
   return 0;
@@ -168,6 +315,9 @@ export function incrementBlogLikes(slugOrId: string): number {
   if (blog) {
     blog.likes = (blog.likes || 0) + 1;
     saveBlogsServer(blogs);
+    if (isDynamoDBConfigured()) {
+      saveBlogToDynamoDB(blog).catch(() => {});
+    }
     return blog.likes;
   }
   return 0;
@@ -249,6 +399,9 @@ export function saveArticleRevision(articleId: string, revisionNote?: string): A
   }
 
   saveBlogsServer(blogs);
+  if (isDynamoDBConfigured()) {
+    saveBlogToDynamoDB(blog).catch(() => {});
+  }
   return revision;
 }
 
@@ -272,6 +425,9 @@ export function restoreArticleRevision(articleId: string, revisionId: string): B
   blog.updatedAt = new Date().toISOString();
 
   saveBlogsServer(blogs);
+  if (isDynamoDBConfigured()) {
+    saveBlogToDynamoDB(blog).catch(() => {});
+  }
   return blog;
 }
 
@@ -326,103 +482,13 @@ export async function getBlogsDb(): Promise<BlogPost[]> {
     console.warn('PostgreSQL query notice (falling back to JSON store):', error);
   }
 
-  return getBlogsServer();
+  return getBlogsServerAsync();
 }
 
 /**
  * Async PostgreSQL blog creation / upsert with JSON file sync.
  */
 export async function createOrUpdateBlogDb(blog: BlogPost): Promise<BlogPost> {
-  const existing = getBlogsServer();
-  const idx = existing.findIndex((b) => b.id === blog.id || b.slug === blog.slug);
-
-  if (idx > -1) {
-    // Snapshot revision if content changed
-    if (existing[idx].content !== blog.content || existing[idx].title !== blog.title) {
-      saveArticleRevision(existing[idx].id, 'Auto-version before update');
-    }
-    existing[idx] = { ...existing[idx], ...blog, updatedAt: new Date().toISOString() };
-  } else {
-    existing.push({
-      ...blog,
-      views: blog.views || 0,
-      likes: blog.likes || 0,
-      status: blog.status || 'published',
-      publishedAt: blog.publishedAt || new Date().toISOString().split('T')[0],
-    });
-  }
-
-  // Ensure chronological sort
-  existing.sort((a, b) => {
-    const timeB = parseDate(b.publishedAt).getTime();
-    const timeA = parseDate(a.publishedAt).getTime();
-    return timeB - timeA;
-  });
-
-  saveBlogsServer(existing);
-
-  // If DATABASE_URL is configured, save to PostgreSQL
-  try {
-    if (process.env.DATABASE_URL) {
-      await (prisma.blogPost as any).upsert({
-        where: { slug: blog.slug },
-        update: {
-          title: blog.title,
-          subtitle: blog.subtitle,
-          excerpt: blog.excerpt,
-          content: blog.content,
-          coverImage: blog.coverImage,
-          coverCaption: blog.coverCaption,
-          category: blog.category,
-          subcategory: blog.subcategory,
-          tags: blog.tags,
-          authorName: blog.author.name,
-          authorAvatar: blog.author.avatar,
-          authorRole: blog.author.role,
-          publishedAt: blog.publishedAt,
-          readTime: blog.readTime,
-          status: blog.status,
-          featured: Boolean(blog.featured),
-          editorsPick: Boolean(blog.editorsPick),
-          views: blog.views || 0,
-          likes: blog.likes || 0,
-          metaTitle: blog.seo?.metaTitle,
-          metaDescription: blog.seo?.metaDescription,
-          canonicalUrl: blog.seo?.canonicalUrl,
-          ogImage: blog.seo?.ogImage,
-        },
-        create: {
-          id: blog.id,
-          slug: blog.slug,
-          title: blog.title,
-          subtitle: blog.subtitle,
-          excerpt: blog.excerpt,
-          content: blog.content,
-          coverImage: blog.coverImage,
-          coverCaption: blog.coverCaption,
-          category: blog.category,
-          subcategory: blog.subcategory,
-          tags: blog.tags,
-          authorName: blog.author.name,
-          authorAvatar: blog.author.avatar,
-          authorRole: blog.author.role,
-          publishedAt: blog.publishedAt,
-          readTime: blog.readTime,
-          status: blog.status,
-          featured: Boolean(blog.featured),
-          editorsPick: Boolean(blog.editorsPick),
-          views: blog.views || 0,
-          likes: blog.likes || 0,
-          metaTitle: blog.seo?.metaTitle,
-          metaDescription: blog.seo?.metaDescription,
-          canonicalUrl: blog.seo?.canonicalUrl,
-          ogImage: blog.seo?.ogImage,
-        },
-      });
-    }
-  } catch (error) {
-    console.warn('PostgreSQL write notice:', error);
-  }
-
+  await saveBlogServerAsync(blog);
   return blog;
 }

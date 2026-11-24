@@ -36,7 +36,10 @@ import {
   RefreshCw,
   Sliders,
   KeyRound,
-  AlertCircle
+  AlertCircle,
+  CloudUpload,
+  Database,
+  Cloud
 } from 'lucide-react';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 
@@ -65,12 +68,35 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
   const [settings, setSettings] = useState<WebsiteSettings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // AWS DynamoDB Cloud DB State
+  const [dynamoConfigured, setDynamoConfigured] = useState<boolean | null>(null);
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+
   const { showToast } = useToast();
 
   useEffect(() => {
     setIsAuthenticated(ClientStorage.isAdminAuthenticated());
     const merged = ClientStorage.getMergedBlogs(initialBlogs);
     setBlogs(merged);
+
+    // Check AWS DynamoDB cloud database status and fetch fresh blogs
+    fetch('/api/blogs/sync')
+      .then((r) => r.json())
+      .then((d) => {
+        setDynamoConfigured(Boolean(d.configured));
+        if (d.configured) {
+          fetch('/api/blogs?includeDrafts=true')
+            .then((r) => r.json())
+            .then((fresh) => {
+              if (Array.isArray(fresh) && fresh.length > 0) {
+                const freshMerged = ClientStorage.getMergedBlogs(fresh);
+                setBlogs(freshMerged);
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
 
     const customPass = ClientStorage.getCustomAdminPassword();
     if (customPass) {
@@ -258,6 +284,29 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
     }
   };
 
+  // Sync articles to AWS DynamoDB Free Cloud Database
+  const handleSyncToCloud = async () => {
+    setIsSyncingCloud(true);
+    try {
+      const res = await fetch('/api/blogs/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogs }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setDynamoConfigured(result.dynamoConfigured);
+        showToast(result.message || 'Synced to AWS DynamoDB successfully!', 'success');
+      } else {
+        showToast(result.error || 'Sync failed', 'error');
+      }
+    } catch {
+      showToast('Failed to connect to sync endpoint', 'error');
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
+
   // Delete Subscriber
   const handleDeleteSubscriber = async (id: string) => {
     if (!confirm('Remove subscriber?')) return;
@@ -412,9 +461,26 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
             <h1 className="font-serif text-2xl sm:text-3xl font-black text-navy-800 dark:text-offwhite">
               Publication Dashboard
             </h1>
-            <p className="text-xs text-charcoal-500 dark:text-slate-400">
-              Production Content Management System • The Mind Upgrade
-            </p>
+            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+              <p className="text-xs text-charcoal-500 dark:text-slate-400">
+                Production Content Management System • The Mind Upgrade
+              </p>
+              {dynamoConfigured === true && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  AWS DynamoDB Active
+                </span>
+              )}
+              {dynamoConfigured === false && (
+                <span
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                  title="DynamoDB credentials pending in AWS Amplify Console environment variables"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Cloud DB: Setup Pending
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -634,6 +700,16 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                   </option>
                 ))}
               </select>
+
+              <button
+                onClick={handleSyncToCloud}
+                disabled={isSyncingCloud}
+                className="px-3 py-2 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                title="Sync all articles to AWS DynamoDB (makes articles identical on Desktop, iPhone & all devices)"
+              >
+                <CloudUpload className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isSyncingCloud ? 'Syncing...' : 'Sync to DynamoDB'}</span>
+              </button>
 
               <button
                 onClick={() => {

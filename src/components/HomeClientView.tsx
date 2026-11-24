@@ -55,6 +55,22 @@ export function HomeClientView({
     setBlogs(merged);
     const updatedHero = merged.find((b) => b.id === featuredPost?.id || b.slug === featuredPost?.slug) || merged[0] || null;
     setHeroPost(updatedHero);
+
+    // Fetch fresh articles from DynamoDB cloud database
+    fetch('/api/blogs')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((cloudBlogs) => {
+        if (Array.isArray(cloudBlogs) && cloudBlogs.length > 0) {
+          const freshMerged = ClientStorage.getMergedBlogs(cloudBlogs);
+          setBlogs(freshMerged);
+          const freshHero =
+            freshMerged.find((b) => b.id === featuredPost?.id || b.slug === featuredPost?.slug) ||
+            freshMerged[0] ||
+            null;
+          setHeroPost(freshHero);
+        }
+      })
+      .catch(() => {});
   }, [initialBlogs, featuredPost]);
 
   const getCategoryIcon = (iconName: string) => {

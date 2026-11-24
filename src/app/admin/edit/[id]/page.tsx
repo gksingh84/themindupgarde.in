@@ -1,12 +1,12 @@
 import React from 'react';
-import { getBlogsServer } from '@/lib/blog-service';
+import { getBlogsServerAsync } from '@/lib/blog-service';
 import { BlogEditorClient } from '@/components/BlogEditorClient';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const decodedId = decodeURIComponent(id || '').trim();
-    const blogs = getBlogsServer();
+    const blogs = await getBlogsServerAsync();
     const blog = blogs.find(
       (b) =>
         b.id === decodedId ||
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function EditBlogPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const decodedId = decodeURIComponent(id || '').trim();
-  const blogs = getBlogsServer();
+  const blogs = await getBlogsServerAsync();
   const blog =
     blogs.find(
       (b) =>
@@ -33,4 +33,3 @@ export default async function EditBlogPage({ params }: { params: Promise<{ id: s
 
   return <BlogEditorClient initialPost={blog} isEditing={true} postId={decodedId} />;
 }
-

@@ -1,5 +1,5 @@
 import React from 'react';
-import { getBlogsServer } from '@/lib/blog-service';
+import { getBlogsServerAsync } from '@/lib/blog-service';
 import { AdminDashboardClient } from '@/components/AdminDashboardClient';
 
 export const metadata = {
@@ -7,7 +7,7 @@ export const metadata = {
   description: 'Manage blog posts, edit content, toggle drafts, and publish articles.',
 };
 
-export default function AdminPage() {
-  const blogs = getBlogsServer();
+export default async function AdminPage() {
+  const blogs = await getBlogsServerAsync();
   return <AdminDashboardClient initialBlogs={blogs} />;
 }
