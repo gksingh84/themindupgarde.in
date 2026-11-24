@@ -29,8 +29,9 @@ import {
 } from 'lucide-react';
 
 interface BlogEditorClientProps {
-  initialPost?: BlogPost;
+  initialPost?: BlogPost | null;
   isEditing?: boolean;
+  postId?: string;
 }
 
 function toInputDateFormat(dateStr?: string): string {
@@ -123,7 +124,7 @@ function optimizeImageFile(file: File, maxWidth = 1400, quality = 0.85): Promise
   });
 }
 
-export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorClientProps) {
+export function BlogEditorClient({ initialPost, isEditing = false, postId }: BlogEditorClientProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -172,38 +173,39 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
 
   useEffect(() => {
     setIsAuthenticated(ClientStorage.isAdminAuthenticated());
-    if (initialPost) {
-      const custom = ClientStorage.getCustomBlog(initialPost.id || initialPost.slug);
-      if (custom) {
-        setTitle(custom.title || '');
-        setSubtitle(custom.subtitle || '');
-        setSlug(custom.slug || '');
-        setCategory(custom.category || 'Personal Finance');
-        setSubcategory(custom.subcategory || '');
-        setTagsInput(custom.tags?.join(', ') || '');
-        setCoverImage(custom.coverImage || '/images/financial-independence.svg');
-        setCoverCaption(custom.coverCaption || '');
-        setExcerpt(custom.excerpt || '');
-        setContent(custom.content || '');
-        if (custom.author) {
-          setAuthorName(custom.author.name || 'Gaurav Kumar Singh');
-          setAuthorRole(custom.author.role || 'Founder & Managing Editor');
-          setAuthorAvatar(custom.author.avatar || '/images/gaurav-kumar-singh.jpg');
-          setAuthorBio(custom.author.bio || '');
-          setShowAuthorPhoto(custom.author.showPhoto !== false);
-        }
-        setStatus(custom.status || 'published');
-        setFeatured(Boolean(custom.featured));
-        setEditorsPick(Boolean(custom.editorsPick));
-        if (custom.publishedAt) setPublishedAt(toInputDateFormat(custom.publishedAt));
-        if (custom.scheduledAt) setScheduledAt(custom.scheduledAt);
-        if (custom.seo) {
-          setMetaTitle(custom.seo.metaTitle || '');
-          setMetaDescription(custom.seo.metaDescription || '');
-        }
+    const lookupKey = postId || (initialPost ? initialPost.id || initialPost.slug : '');
+    const custom = lookupKey ? ClientStorage.getCustomBlog(lookupKey) : null;
+    const post = custom || initialPost;
+
+    if (post) {
+      setTitle(post.title || '');
+      setSubtitle(post.subtitle || '');
+      setSlug(post.slug || '');
+      setCategory(post.category || 'Personal Finance');
+      setSubcategory(post.subcategory || '');
+      setTagsInput(post.tags?.join(', ') || '');
+      setCoverImage(post.coverImage || '/images/financial-independence.svg');
+      setCoverCaption(post.coverCaption || '');
+      setExcerpt(post.excerpt || '');
+      setContent(post.content || '');
+      if (post.author) {
+        setAuthorName(post.author.name || 'Gaurav Kumar Singh');
+        setAuthorRole(post.author.role || 'Founder & Managing Editor');
+        setAuthorAvatar(post.author.avatar || '/images/gaurav-kumar-singh.jpg');
+        setAuthorBio(post.author.bio || '');
+        setShowAuthorPhoto(post.author.showPhoto !== false);
+      }
+      setStatus(post.status || 'published');
+      setFeatured(Boolean(post.featured));
+      setEditorsPick(Boolean(post.editorsPick));
+      if (post.publishedAt) setPublishedAt(toInputDateFormat(post.publishedAt));
+      if (post.scheduledAt) setScheduledAt(post.scheduledAt);
+      if (post.seo) {
+        setMetaTitle(post.seo.metaTitle || '');
+        setMetaDescription(post.seo.metaDescription || '');
       }
     }
-  }, [initialPost]);
+  }, [initialPost, postId]);
 
   // Selected category info
   const selectedCatObj = CATEGORIES.find(
@@ -336,7 +338,8 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
     };
 
     try {
-      const url = isEditing && initialPost ? `/api/blogs/${initialPost.id}` : '/api/blogs';
+      const targetId = (initialPost && initialPost.id) || postId;
+      const url = isEditing && targetId ? `/api/blogs/${targetId}` : '/api/blogs';
       const method = isEditing ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -351,7 +354,7 @@ export function BlogEditorClient({ initialPost, isEditing = false }: BlogEditorC
       const savedRecord: BlogPost = {
         ...(initialPost || {}),
         ...postPayload,
-        id: (data && data.id) || (initialPost && initialPost.id) || String(Date.now()),
+        id: (data && data.id) || targetId || String(Date.now()),
       } as BlogPost;
       ClientStorage.saveBlog(savedRecord);
 
