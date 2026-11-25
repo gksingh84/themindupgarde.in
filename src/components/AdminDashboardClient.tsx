@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { DynamoDBSetupModal } from '@/components/DynamoDBSetupModal';
+import { AdminNotificationSettings } from '@/components/AdminNotificationSettings';
 
 interface AdminDashboardClientProps {
   initialBlogs: BlogPost[];
@@ -55,7 +56,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'articles' | 'subscribers' | 'settings' | 'categories' | 'security' | 'advanced'>('articles');
+  const [activeTab, setActiveTab] = useState<'articles' | 'subscribers' | 'notifications' | 'categories' | 'settings' | 'security' | 'advanced'>('articles');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isDefaultPassword, setIsDefaultPassword] = useState(true);
@@ -694,6 +695,18 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
         </button>
 
         <button
+          onClick={() => setActiveTab('notifications')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+            activeTab === 'notifications'
+              ? 'bg-navy-800 dark:bg-amberBrand text-white dark:text-navy-950 shadow-sm'
+              : 'text-charcoal-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-800'
+          }`}
+        >
+          <Bell className="w-3.5 h-3.5" />
+          <span>Email Alerts</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('categories')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
             activeTab === 'categories'
@@ -1039,6 +1052,15 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 2.5: EMAIL ALERTS & NOTIFICATIONS
+          ======================================================== */}
+      {activeTab === 'notifications' && (
+        <div className="space-y-6">
+          <AdminNotificationSettings />
         </div>
       )}
 

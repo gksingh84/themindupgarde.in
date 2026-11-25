@@ -290,6 +290,7 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
   });
 
   const setLink = () => {
+    if (!editor) return;
     const previousUrl = editor.getAttributes('link').href;
     const url = window.prompt('Enter URL:', previousUrl);
     if (url === null) return;
@@ -302,7 +303,7 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !editor) return;
 
     setUploading(true);
     const formData = new FormData();
@@ -314,7 +315,7 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
         body: formData,
       });
       const data = await res.json();
-      if (data.url) {
+      if (data.url && editor) {
         editor.chain().focus().setImage({ src: data.url }).run();
         setShowImageModal(false);
       }
@@ -326,7 +327,7 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
   };
 
   const addImageUrl = () => {
-    if (imageUrl) {
+    if (imageUrl && editor) {
       editor.chain().focus().setImage({ src: imageUrl }).run();
       setImageUrl('');
       setShowImageModal(false);
@@ -412,6 +413,7 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
   };
 
   const insertTable = (r?: number, c?: number, withHeader = true) => {
+    if (!editor) return;
     const rows = r ?? Math.max(1, Math.min(tableRows, 50));
     const cols = c ?? Math.max(1, Math.min(tableCols, 20));
     editor

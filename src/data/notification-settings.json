@@ -3,9 +3,9 @@
   "notifyOnComment": true,
   "notifyOnLike": true,
   "notifyOnSubscriber": true,
-  "smtpHost": "",
-  "smtpPort": 587,
-  "smtpUser": "",
-  "smtpPass": "PASSWORD@123456",
-  "senderName": "The Mind Upgrade Notifications"
+  "smtpHost": "smtp.gmail.com",
+  "smtpPort": 465,
+  "smtpUser": "mindupgrade.support@gmail.com",
+  "smtpPass": "",
+  "senderName": "The Mind Upgrade"
 }

@@ -9,6 +9,7 @@ import {
   getDynamoAccessKeyId,
   getDynamoSecretAccessKey,
   applyDynamoCredsHeader,
+  setDynamoRuntimeConfig,
 } from '@/lib/dynamodb';
 import { BlogPost } from '@/types/blog';
 

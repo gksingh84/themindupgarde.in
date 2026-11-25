@@ -141,12 +141,22 @@ function addNotificationLog(log: Omit<NotificationLog, 'id' | 'timestamp'>): Not
 
 // Helper to create Nodemailer transporter
 function createTransporter(settings: NotificationSettings) {
-  const host = settings.smtpHost || process.env.SMTP_HOST;
-  const port = settings.smtpPort || Number(process.env.SMTP_PORT) || 587;
-  const user = settings.smtpUser || process.env.SMTP_USER;
+  const host = settings.smtpHost || process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(settings.smtpPort) || Number(process.env.SMTP_PORT) || 465;
+  const user = settings.smtpUser || process.env.SMTP_USER || settings.adminEmail || 'mindupgrade.support@gmail.com';
   const pass = settings.smtpPass || process.env.SMTP_PASS;
 
   if (host && user && pass) {
+    if (host.includes('gmail.com')) {
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user,
+          pass,
+        },
+      });
+    }
+
     return nodemailer.createTransport({
       host,
       port,
