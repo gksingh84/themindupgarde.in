@@ -32,43 +32,65 @@ const envKeys = [
   'SMTP_FROM',
 ];
 
-const envLines = [];
-for (const key of envKeys) {
-  const val = process.env[key];
-  if (val && typeof val === 'string' && val.trim() !== '') {
-    envLines.push(`${key}=${val.trim()}`);
+const envMap = new Map();
+const envProdPath = path.join(process.cwd(), '.env.production');
+
+// 1. Read existing .env.production if it exists so we do not overwrite keys injected by Amplify
+if (fs.existsSync(envProdPath)) {
+  try {
+    const existing = fs.readFileSync(envProdPath, 'utf-8');
+    for (const line of existing.split('\n')) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+        const idx = trimmed.indexOf('=');
+        const k = trimmed.slice(0, idx).trim();
+        const v = trimmed.slice(idx + 1).trim();
+        if (k && v) {
+          envMap.set(k, v);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[inject-env] Note reading existing .env.production:', e.message);
   }
 }
 
-// Ensure ADMIN_PASSWORD and NEXT_PUBLIC_ADMIN_PASSWORD always default to adminpassword@7531 if not provided
-if (!envLines.some((l) => l.startsWith('ADMIN_PASSWORD='))) {
-  envLines.push(`ADMIN_PASSWORD=${process.env.ADMIN_PASSWORD || 'adminpassword@7531'}`);
-}
-if (!envLines.some((l) => l.startsWith('NEXT_PUBLIC_ADMIN_PASSWORD='))) {
-  envLines.push(`NEXT_PUBLIC_ADMIN_PASSWORD=${process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'adminpassword@7531'}`);
-}
-if (!envLines.some((l) => l.startsWith('ADMIN_NOTIFICATION_EMAIL='))) {
-  envLines.push(`ADMIN_NOTIFICATION_EMAIL=${process.env.ADMIN_NOTIFICATION_EMAIL || 'mindupgrade.support@gmail.com'}`);
+// 2. Add process.env keys
+for (const key of envKeys) {
+  const val = process.env[key];
+  if (val && typeof val === 'string' && val.trim() !== '') {
+    envMap.set(key, val.trim());
+  }
 }
 
-// Also capture any other key starting with APP_AWS_, DYNAMO, or TMU_
+// 3. Fallback defaults for admin password and notifications
+if (!envMap.has('ADMIN_PASSWORD') || !envMap.get('ADMIN_PASSWORD')) {
+  envMap.set('ADMIN_PASSWORD', process.env.ADMIN_PASSWORD || 'adminpassword@7531');
+}
+if (!envMap.has('NEXT_PUBLIC_ADMIN_PASSWORD') || !envMap.get('NEXT_PUBLIC_ADMIN_PASSWORD')) {
+  envMap.set('NEXT_PUBLIC_ADMIN_PASSWORD', process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'adminpassword@7531');
+}
+if (!envMap.has('ADMIN_NOTIFICATION_EMAIL') || !envMap.get('ADMIN_NOTIFICATION_EMAIL')) {
+  envMap.set('ADMIN_NOTIFICATION_EMAIL', process.env.ADMIN_NOTIFICATION_EMAIL || 'mindupgrade.support@gmail.com');
+}
+
+// 4. Also capture any other key starting with APP_AWS_, DYNAMO, TMU_, or MY_AWS_
 for (const [k, v] of Object.entries(process.env)) {
   if (
-    (k.startsWith('APP_AWS_') || k.startsWith('DYNAMO') || k.startsWith('TMU_')) &&
-    !envKeys.includes(k) &&
+    (k.startsWith('APP_AWS_') || k.startsWith('DYNAMO') || k.startsWith('TMU_') || k.startsWith('MY_AWS_')) &&
     v &&
     typeof v === 'string' &&
     v.trim() !== ''
   ) {
-    envLines.push(`${k}=${v.trim()}`);
+    envMap.set(k, v.trim());
   }
 }
 
-if (envLines.length > 0) {
-  const content = envLines.join('\n') + '\n';
+if (envMap.size > 0) {
+  const content = Array.from(envMap.entries()).map(([k, v]) => `${k}=${v}`).join('\n') + '\n';
   try {
-    fs.writeFileSync(path.join(process.cwd(), '.env.production'), content, 'utf-8');
-    console.log(`[inject-env] Successfully injected ${envLines.length} environment variables into .env.production`);
+    fs.writeFileSync(envProdPath, content, 'utf-8');
+    console.log(`[inject-env] Successfully injected ${envMap.size} environment variables into .env.production`);
   } catch (err) {
     console.warn('[inject-env] Warning writing .env.production:', err);
   }

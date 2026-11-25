@@ -3,17 +3,22 @@ frontend:
   phases:
     preBuild:
       commands:
+        - nvm install 20 || true
+        - nvm use 20 || true
+        - node -v
+        - npm -v
         - npm ci --cache .npm --prefer-offline || npm install
     build:
       commands:
+        - export NODE_OPTIONS="--max-old-space-size=4096"
         - env | grep -E '^(APP_AWS_|DYNAMODB_|DYNAMO_|TMU_|MY_AWS_|NEXT_PUBLIC_|ADMIN_|DATABASE_)' >> .env.production || true
         - npm run build
+        - rm -rf .next/cache
   artifacts:
     baseDirectory: .next
     files:
       - '**/*'
   cache:
     paths:
-      - .next/cache/**/*
       - .npm/**/*
       - node_modules/**/*
