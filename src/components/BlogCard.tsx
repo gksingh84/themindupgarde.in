@@ -6,7 +6,7 @@ import { BlogPost } from '@/types/blog';
 import { ClientStorage } from '@/lib/client-storage';
 import { useToast } from '@/context/ToastContext';
 import { formatDateDDMMYYYY } from '@/lib/date-utils';
-import { Clock, Bookmark, Share2, ArrowUpRight, Heart, Sparkles } from 'lucide-react';
+import { Clock, Bookmark, Share2, ArrowUpRight, Heart, Sparkles, Eye } from 'lucide-react';
 import { ShareModal } from '@/components/ShareModal';
 
 interface BlogCardProps {
@@ -142,6 +142,13 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
             </div>
 
             <div className="flex items-center gap-2">
+              <span
+                className="px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-semibold text-charcoal-600 dark:text-slate-300 bg-slate-100/80 dark:bg-navy-800 border-slate-200 dark:border-navy-700"
+                title="Total views"
+              >
+                <Eye className="w-3.5 h-3.5 text-amberBrand" />
+                <span>{post.views || 0}</span>
+              </span>
               <button
                 onClick={handleLike}
                 className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
@@ -283,6 +290,13 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
         </div>
 
         <div className="flex items-center gap-2 text-xs text-charcoal-500 dark:text-slate-400">
+          <span
+            className="px-2 py-1 rounded-lg border flex items-center gap-1 text-[11px] font-semibold text-charcoal-600 dark:text-slate-300 bg-slate-100/80 dark:bg-navy-800 border-slate-200 dark:border-navy-700"
+            title="Total views"
+          >
+            <Eye className="w-3 h-3 text-amberBrand" />
+            <span>{post.views || 0}</span>
+          </span>
           <button
             onClick={handleLike}
             className={`px-2 py-1 rounded-lg border flex items-center gap-1 text-xs font-bold transition-all cursor-pointer ${

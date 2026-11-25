@@ -23,7 +23,8 @@ import {
   CheckCircle2,
   Calendar,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Eye
 } from 'lucide-react';
 
 interface BlogPostClientViewProps {
@@ -99,6 +100,7 @@ export function BlogPostClientView({
   }, [initialPost, initialRelated, slug]);
 
   const [likes, setLikes] = useState(initialPost?.likes || 0);
+  const [views, setViews] = useState(initialPost?.views || 0);
   const [hasLiked, setHasLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -148,22 +150,24 @@ export function BlogPostClientView({
   useEffect(() => {
     if (!post) return;
     setLikes(post.likes || 0);
+    setViews(post.views || 0);
     setHasLiked(ClientStorage.isLiked(post.slug));
     setIsBookmarked(ClientStorage.isBookmarked(post.slug));
 
-    // Register view count
-    const sessionKey = `viewed_${post.id}`;
-    if (typeof window !== 'undefined' && !sessionStorage.getItem(sessionKey)) {
-      sessionStorage.setItem(sessionKey, 'true');
-      fetch(`/api/blogs/${post.id}/view`, { method: 'POST' })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && typeof data.views === 'number') {
-            setPost((prev) => (prev ? { ...prev, views: data.views } : prev));
+    // Register view count on read
+    fetch(`/api/blogs/${post.id}/view`, { method: 'POST' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && typeof data.views === 'number') {
+          setViews(data.views);
+          setPost((prev) => (prev ? { ...prev, views: data.views } : prev));
+          const custom = ClientStorage.getCustomBlog(post.id || post.slug);
+          if (custom) {
+            ClientStorage.saveBlog({ ...custom, views: data.views });
           }
-        })
-        .catch(() => {});
-    }
+        }
+      })
+      .catch(() => {});
 
     // Fetch comments
     fetch(`/api/comments?postSlug=${post.slug}`)
@@ -490,7 +494,7 @@ export function BlogPostClientView({
               </div>
             </div>
 
-            <div className="flex items-center gap-4 flex-wrap justify-center">
+            <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-amberBrand" />
                 <span>Published {formatDateDDMMYYYY(post.publishedAt)}</span>
@@ -500,6 +504,27 @@ export function BlogPostClientView({
                 <Clock className="w-3.5 h-3.5 text-amberBrand" />
                 <span>{post.readTime}</span>
               </span>
+              <span>•</span>
+              <span
+                className="flex items-center gap-1.5 font-bold text-navy-800 dark:text-offwhite bg-slate-100 dark:bg-navy-800 px-3 py-1 rounded-full border border-slate-200 dark:border-navy-700 text-xs"
+                title="Total views"
+              >
+                <Eye className="w-3.5 h-3.5 text-amberBrand" />
+                <span>{views} {views === 1 ? 'View' : 'Views'}</span>
+              </span>
+              <span>•</span>
+              <button
+                onClick={handleLike}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold transition-all cursor-pointer ${
+                  hasLiked
+                    ? 'bg-rose-500/15 text-rose-600 border-rose-500/40 shadow-xs'
+                    : 'bg-slate-100 dark:bg-navy-800 text-charcoal-600 dark:text-slate-300 hover:text-rose-600 border-slate-200 dark:border-navy-700'
+                }`}
+                title="Like article"
+              >
+                <Heart className={`w-3.5 h-3.5 ${hasLiked ? 'fill-current text-rose-500' : ''}`} />
+                <span>{likes} {likes === 1 ? 'Like' : 'Likes'}</span>
+              </button>
               <span>•</span>
               <button
                 onClick={() => setIsShareModalOpen(true)}

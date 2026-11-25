@@ -72,6 +72,29 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
   // AWS DynamoDB Cloud DB State
   const [dynamoConfigured, setDynamoConfigured] = useState<boolean | null>(null);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchFreshBlogs = async () => {
+    setIsRefreshing(true);
+    const customCreds = ClientStorage.getDynamoCreds();
+    const reqHeaders: Record<string, string> = {};
+    if (customCreds) {
+      reqHeaders['x-dynamo-creds'] = encodeURIComponent(JSON.stringify(customCreds));
+    }
+    try {
+      const res = await fetch('/api/blogs?includeDrafts=true', { headers: reqHeaders });
+      if (res.ok) {
+        const fresh = await res.json();
+        if (Array.isArray(fresh) && fresh.length > 0) {
+          setBlogs(fresh);
+          showToast('Updated latest views, likes & articles!', 'success');
+        }
+      }
+    } catch {}
+    finally {
+      setIsRefreshing(false);
+    }
+  };
   const [isDynamoModalOpen, setIsDynamoModalOpen] = useState(false);
 
   const { showToast } = useToast();
@@ -743,6 +766,16 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                   </option>
                 ))}
               </select>
+
+              <button
+                onClick={fetchFreshBlogs}
+                disabled={isRefreshing}
+                className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite hover:text-amberBrand transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                title="Refresh latest views, likes & articles"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-amberBrand ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh Stats</span>
+              </button>
 
               <button
                 onClick={handleSyncToCloud}

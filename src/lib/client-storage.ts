@@ -201,9 +201,22 @@ export const ClientStorage = {
     // 2. Replace any modified initial blogs with custom versions
     result = result.map((b) => {
       const key = b.id || b.slug;
-      if (customMap[key]) return customMap[key];
+      if (customMap[key]) {
+        return {
+          ...customMap[key],
+          views: Math.max(customMap[key].views || 0, b.views || 0),
+          likes: Math.max(customMap[key].likes || 0, b.likes || 0),
+        };
+      }
       const match = Object.values(customMap).find((c) => c.id === b.id || c.slug === b.slug);
-      return match || b;
+      if (match) {
+        return {
+          ...match,
+          views: Math.max(match.views || 0, b.views || 0),
+          likes: Math.max(match.likes || 0, b.likes || 0),
+        };
+      }
+      return b;
     });
 
     // 3. Append newly created blogs not in initial list
