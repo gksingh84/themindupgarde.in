@@ -18,6 +18,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Password is required' }, { status: 400 });
     }
 
+    const trimmed = password.trim();
+    if (trimmed === 'mindupgrade@7531' || trimmed === 'admin123') {
+      return NextResponse.json(
+        { success: false, error: 'This old password has been disabled. Please use adminpassword@7531' },
+        { status: 401 }
+      );
+    }
+
     const isValid = verifyAdminPassword(password);
     if (isValid) {
       if (syncCustom) {
@@ -36,6 +44,16 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
     const { currentPassword, newPassword, direct } = body;
+
+    if (newPassword) {
+      const trimmed = newPassword.trim();
+      if (trimmed === 'mindupgrade@7531' || trimmed === 'admin123') {
+        return NextResponse.json(
+          { success: false, error: 'Cannot set password to a retired password.' },
+          { status: 400 }
+        );
+      }
+    }
 
     if (direct && newPassword && newPassword.length >= 6) {
       const ok = setAdminPasswordDirect(newPassword);

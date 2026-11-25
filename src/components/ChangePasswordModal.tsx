@@ -76,8 +76,18 @@ export function ChangePasswordModal({
       return;
     }
 
+    if (currentPassword.trim() === 'mindupgrade@7531' || currentPassword.trim() === 'admin123') {
+      setError('The old password has been disabled. Please use adminpassword@7531 as current password.');
+      return;
+    }
+
     if (!newPassword || newPassword.length < 6) {
       setError('New password must be at least 6 characters.');
+      return;
+    }
+
+    if (newPassword.trim() === 'mindupgrade@7531' || newPassword.trim() === 'admin123') {
+      setError('Cannot set password to a retired password.');
       return;
     }
 

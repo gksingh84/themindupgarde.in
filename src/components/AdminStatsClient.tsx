@@ -78,6 +78,12 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const entered = password.trim();
+
+    if (entered === 'mindupgrade@7531' || entered === 'admin123') {
+      showToast('This old password has been disabled. Please enter adminpassword@7531', 'error');
+      return;
+    }
+
     if (entered === 'adminpassword@7531') {
       ClientStorage.setCustomAdminPassword('adminpassword@7531');
       ClientStorage.setAdminAuthenticated(true);

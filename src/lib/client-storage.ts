@@ -86,11 +86,16 @@ export const ClientStorage = {
   },
   getCustomAdminPassword(): string {
     if (typeof window === 'undefined') return '';
-    return localStorage.getItem('tmu_custom_admin_password') || '';
+    const stored = localStorage.getItem('tmu_custom_admin_password') || '';
+    if (stored === 'mindupgrade@7531' || stored === 'admin123') {
+      localStorage.removeItem('tmu_custom_admin_password');
+      return '';
+    }
+    return stored;
   },
   setCustomAdminPassword(password: string): void {
     if (typeof window === 'undefined') return;
-    if (password) {
+    if (password && password !== 'mindupgrade@7531' && password !== 'admin123') {
       localStorage.setItem('tmu_custom_admin_password', password);
     } else {
       localStorage.removeItem('tmu_custom_admin_password');
@@ -99,6 +104,7 @@ export const ClientStorage = {
   validateAdminPassword(entered: string): boolean {
     if (!entered) return false;
     const trimmed = entered.trim();
+    if (trimmed === 'mindupgrade@7531' || trimmed === 'admin123') return false;
     if (trimmed === 'adminpassword@7531') return true;
     if (process.env.NEXT_PUBLIC_ADMIN_PASSWORD && trimmed === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) return true;
     const custom = this.getCustomAdminPassword();

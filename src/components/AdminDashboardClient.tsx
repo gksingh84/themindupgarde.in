@@ -105,8 +105,16 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       })
       .catch(() => {});
 
+    // Purge old custom password if still present in client localStorage
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('tmu_custom_admin_password');
+      if (stored === 'mindupgrade@7531' || stored === 'admin123') {
+        localStorage.removeItem('tmu_custom_admin_password');
+      }
+    }
+
     const customPass = ClientStorage.getCustomAdminPassword();
-    if (customPass) {
+    if (customPass && customPass !== 'mindupgrade@7531' && customPass !== 'admin123') {
       setIsDefaultPassword(false);
       // Synchronize server cache with the custom password
       fetch('/api/admin/auth', {
@@ -162,6 +170,12 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
     e.preventDefault();
     const entered = password.trim();
 
+    // 0. Explicitly block retired/old passwords
+    if (entered === 'mindupgrade@7531' || entered === 'admin123') {
+      showToast('This old password has been disabled. Please enter adminpassword@7531', 'error');
+      return;
+    }
+
     // 1. Direct match with configured admin password
     if (entered === 'adminpassword@7531') {
       ClientStorage.setCustomAdminPassword('adminpassword@7531');
@@ -179,7 +193,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
 
     // 2. Custom password saved in this browser
     const customPass = ClientStorage.getCustomAdminPassword();
-    if (customPass && entered === customPass) {
+    if (customPass && customPass !== 'mindupgrade@7531' && customPass !== 'admin123' && entered === customPass) {
       ClientStorage.setAdminAuthenticated(true);
       setIsAuthenticated(true);
       showToast('Welcome back to The Mind Upgrade Editorial CMS!', 'success');
