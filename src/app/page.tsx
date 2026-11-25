@@ -7,7 +7,7 @@ import {
 } from '@/lib/blog-service';
 import { HomeClientView } from '@/components/HomeClientView';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // ISR cache: instant <50ms edge delivery with background revalidation
 
 export default async function HomePage() {
   const allBlogs = await getBlogsServerAsync();

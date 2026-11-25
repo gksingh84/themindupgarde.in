@@ -23,7 +23,7 @@ const TMP_DATA_FILE = path.join(os.tmpdir(), 'tmu_blogs.json');
 // In-memory cache for fast SSR response and minimizing DynamoDB RCUs
 let cachedBlogs: BlogPost[] | null = null;
 let lastCacheTime = 0;
-const CACHE_TTL_MS = 15000; // 15 seconds
+const CACHE_TTL_MS = 60000; // 60 seconds in-memory cache
 
 /**
  * Reads blogs asynchronously, prioritizing AWS DynamoDB if configured,
@@ -212,6 +212,29 @@ export async function getBlogBySlugServerAsync(slug: string): Promise<BlogPost |
   if (!slug) return undefined;
   const decoded = decodeURIComponent(slug).toLowerCase().trim();
 
+  // 1. Fast path: check memory cache first (0ms latency, zero DynamoDB round trips)
+  const blogs = await getBlogsServerAsync();
+  const match = blogs.find((b) => {
+    const bSlug = (b.slug || '').toLowerCase().trim();
+    const bId = (b.id || '').toLowerCase().trim();
+    if (bSlug === decoded || bId === decoded) return true;
+    if (
+      decoded === 'pure-term-life-insurance-vs-endowment-ulip' &&
+      (b.id === '7' || bSlug === 'pure-term-life-insurance-vs-endowment-ulip')
+    ) {
+      return true;
+    }
+    if (
+      decoded === 'checklist-to-compare-term-insurance-plans-in-india' &&
+      (b.id === '8' || b.id === '7' || bSlug === 'checklist-to-compare-term-insurance-plans-in-india')
+    ) {
+      return true;
+    }
+    return false;
+  });
+  if (match) return match;
+
+  // 2. Fallback to direct query if not in current cache
   if (isDynamoDBConfigured()) {
     try {
       const fromDb = await getBlogByIdOrSlugFromDynamoDB(decoded);
