@@ -172,8 +172,8 @@ export const ClientStorage = {
 
     // One-time stats reset migration in local browser
     try {
-      if (localStorage.getItem('tmu_stats_reset_v1') !== 'true') {
-        localStorage.setItem('tmu_stats_reset_v1', 'true');
+      if (localStorage.getItem('tmu_stats_reset_v2') !== 'true') {
+        localStorage.setItem('tmu_stats_reset_v2', 'true');
         localStorage.removeItem(LIKES_KEY);
         const custom = this.getCustomBlogs();
         let modified = false;
@@ -204,16 +204,16 @@ export const ClientStorage = {
       if (customMap[key]) {
         return {
           ...customMap[key],
-          views: Math.max(customMap[key].views || 0, b.views || 0),
-          likes: Math.max(customMap[key].likes || 0, b.likes || 0),
+          views: typeof b.views === 'number' ? b.views : (customMap[key].views || 0),
+          likes: typeof b.likes === 'number' ? b.likes : (customMap[key].likes || 0),
         };
       }
       const match = Object.values(customMap).find((c) => c.id === b.id || c.slug === b.slug);
       if (match) {
         return {
           ...match,
-          views: Math.max(match.views || 0, b.views || 0),
-          likes: Math.max(match.likes || 0, b.likes || 0),
+          views: typeof b.views === 'number' ? b.views : (match.views || 0),
+          likes: typeof b.likes === 'number' ? b.likes : (match.likes || 0),
         };
       }
       return b;
@@ -254,6 +254,20 @@ export const ClientStorage = {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(DELETED_BLOGS_KEY);
     localStorage.removeItem(CUSTOM_BLOGS_KEY);
+  },
+
+  // Reset all likes and views in local storage
+  clearAllStats(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(LIKES_KEY);
+    const custom = this.getCustomBlogs();
+    for (const k in custom) {
+      if (custom[k]) {
+        custom[k].views = 0;
+        custom[k].likes = 0;
+      }
+    }
+    localStorage.setItem(CUSTOM_BLOGS_KEY, JSON.stringify(custom));
   },
 
   // DynamoDB Direct Credentials (for seamless sync even before server redeploy)

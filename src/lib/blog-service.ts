@@ -15,6 +15,7 @@ import {
   incrementBlogViewsInDynamoDB,
   incrementBlogLikesInDynamoDB,
   decrementBlogLikesInDynamoDB,
+  resetAllStatsInDynamoDB,
 } from '@/lib/dynamodb';
 
 const DATA_FILE = path.join(process.cwd(), 'src/data/blogs.json');
@@ -37,6 +38,7 @@ export async function getBlogsServerAsync(forceRefresh = false): Promise<BlogPos
 
   if (isDynamoDBConfigured()) {
     try {
+      await resetAllStatsInDynamoDB();
       const dynamoBlogs = await getAllBlogsFromDynamoDB();
       if (dynamoBlogs && dynamoBlogs.length > 0) {
         const targetBlogs = dynamoBlogs.filter((b) => b.id && !String(b.id).startsWith('__'));
@@ -649,4 +651,24 @@ export async function decrementBlogLikesAsync(idOrSlug: string): Promise<BlogPos
   }
 
   return null;
+}
+
+/**
+ * Force-reset all views and likes across DynamoDB, local fallback files, and memory cache.
+ */
+export async function resetAllBlogStatsServerAsync(): Promise<void> {
+  if (isDynamoDBConfigured()) {
+    try {
+      await resetAllStatsInDynamoDB(true);
+    } catch (e) {
+      console.warn('DynamoDB force reset failed:', e);
+    }
+  }
+
+  const blogs = getBlogsServer();
+  const reset = blogs.map((b) => ({ ...b, views: 0, likes: 0 }));
+  saveBlogsServer(reset);
+
+  cachedBlogs = reset;
+  lastCacheTime = Date.now();
 }

@@ -64,8 +64,8 @@ export function BlogPostClientView({
     if (custom) {
       setPost({
         ...custom,
-        views: Math.max(custom.views || 0, initialPost?.views || 0),
-        likes: Math.max(custom.likes || 0, initialPost?.likes || 0),
+        views: typeof initialPost?.views === 'number' ? initialPost.views : (custom.views || 0),
+        likes: typeof initialPost?.likes === 'number' ? initialPost.likes : (custom.likes || 0),
       });
       setNotFound(false);
       setLoading(false);

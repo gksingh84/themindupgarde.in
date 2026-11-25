@@ -30,7 +30,6 @@ export function Header({ onSearchClick, onSubscribeClick }: HeaderProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [mobileExpandedCat, setMobileExpandedCat] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
-  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -56,47 +55,7 @@ export function Header({ onSearchClick, onSubscribeClick }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full transition-all duration-300">
-      
-      {/* 4.A: Editorial Announcement / Top Bar (Configurable & Dismissible) */}
-      {!announcementDismissed && (
-        <aside 
-          aria-label="Editorial announcement"
-          className="bg-navy-800 text-offwhite border-b border-navy-700/70 px-4 py-1.5 text-xs transition-colors"
-        >
-          <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap min-w-0">
-              <span className="bg-amberBrand text-navy-950 font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider shrink-0 flex items-center gap-1 shadow-xs">
-                <Bell className="w-2.5 h-2.5" />
-                Featured Guide
-              </span>
-              <Link 
-                href="/blog/ultimate-guide-health-insurance-india" 
-                className="text-slate-200 hover:text-amberBrand transition-colors truncate text-xs"
-              >
-                The Ultimate Guide to Health Insurance in India: Room Rent Caps &amp; Restoration
-              </Link>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <Link 
-                href="/blog/ultimate-guide-health-insurance-india" 
-                className="hidden md:inline-flex items-center gap-1 text-[11px] font-semibold text-amberBrand hover:underline whitespace-nowrap"
-              >
-                <span>Read guide</span>
-                <ArrowRight className="w-3 h-3" />
-              </Link>
-              <button 
-                onClick={() => setAnnouncementDismissed(true)}
-                className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
-                aria-label="Dismiss announcement"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </aside>
-      )}
-
-      {/* 4.B: Main Editorial Navigation Bar */}
+      {/* Editorial Navigation Bar */}
       <div
         className={`transition-all duration-300 ${
           scrolled

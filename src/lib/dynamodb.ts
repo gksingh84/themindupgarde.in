@@ -709,3 +709,71 @@ export async function getNotificationLogsFromDynamoDB(): Promise<Record<string, 
   }
   return null;
 }
+
+/**
+ * Reset all views and likes to 0 across all blogs in AWS DynamoDB
+ */
+export async function resetAllStatsInDynamoDB(force = false): Promise<boolean> {
+  if (!isDynamoDBConfigured()) return false;
+  try {
+    const client = getDynamoDBClient();
+
+    if (!force) {
+      const marker = await client.send(
+        new GetCommand({
+          TableName: getDynamoTableName(),
+          Key: { id: '__tmu_stats_reset_v2' },
+        })
+      );
+      if (marker.Item) {
+        return true;
+      }
+    }
+
+    console.log('[DynamoDB] Performing reset of all views and likes to 0...');
+    const scanRes = await client.send(
+      new ScanCommand({
+        TableName: getDynamoTableName(),
+      })
+    );
+
+    if (scanRes.Items && scanRes.Items.length > 0) {
+      const blogs = (scanRes.Items as BlogPost[]).filter(
+        (b) => b && b.id && !String(b.id).startsWith('__')
+      );
+      for (const b of blogs) {
+        try {
+          await client.send(
+            new UpdateCommand({
+              TableName: getDynamoTableName(),
+              Key: { id: b.id },
+              UpdateExpression: 'SET views = :zero, likes = :zero',
+              ExpressionAttributeValues: {
+                ':zero': 0,
+              },
+            })
+          );
+        } catch (updateErr) {
+          console.warn(`Failed to reset stats for blog ${b.id}:`, updateErr);
+        }
+      }
+    }
+
+    // Set the reset marker item in DynamoDB so it runs only once
+    await client.send(
+      new PutCommand({
+        TableName: getDynamoTableName(),
+        Item: {
+          id: '__tmu_stats_reset_v2',
+          type: 'stats_reset_marker',
+          resetAt: new Date().toISOString(),
+        },
+      })
+    );
+
+    return true;
+  } catch (error) {
+    console.error('DynamoDB resetAllStats Error:', error);
+    return false;
+  }
+}
