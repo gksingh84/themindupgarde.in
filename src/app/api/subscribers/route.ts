@@ -44,17 +44,21 @@ export async function POST(request: Request) {
 
     await addSubscriberServerAsync(newSub);
 
-    // Trigger admin email notification asynchronously to mindupgrade.support@gmail.com
-    sendAdminNotification({
-      type: 'subscriber',
-      title: '📧 New Community Subscriber!',
-      message: `${newSub.name} (${newSub.email}) joined your newsletter audience.`,
-      details: {
-        subscriberId: newSub.id,
-        email: newSub.email,
-        name: newSub.name,
-      },
-    }).catch((err) => console.error('Notification dispatch error:', err));
+    // Trigger admin email notification immediately before response so Lambda doesn't freeze
+    try {
+      await sendAdminNotification({
+        type: 'subscriber',
+        title: '📧 New Community Subscriber!',
+        message: `${newSub.name} (${newSub.email}) joined your newsletter audience.`,
+        details: {
+          subscriberId: newSub.id,
+          email: newSub.email,
+          name: newSub.name,
+        },
+      });
+    } catch (err) {
+      console.error('Notification dispatch error on subscriber:', err);
+    }
 
     return NextResponse.json(newSub, { status: 201 });
   } catch (err) {

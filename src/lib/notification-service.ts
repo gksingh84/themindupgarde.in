@@ -5,6 +5,8 @@ import nodemailer from 'nodemailer';
 import {
   saveNotificationSettingsToDynamoDB,
   getNotificationSettingsFromDynamoDB,
+  saveNotificationLogsToDynamoDB,
+  getNotificationLogsFromDynamoDB,
 } from '@/lib/dynamodb';
 
 export interface NotificationSettings {
@@ -215,6 +217,24 @@ export function getNotificationLogs(): NotificationLog[] {
   return [];
 }
 
+// Asynchronous get logs (syncs from DynamoDB so all serverless instances see it)
+export async function getNotificationLogsAsync(): Promise<NotificationLog[]> {
+  try {
+    const dynamoLogs = await getNotificationLogsFromDynamoDB();
+    if (dynamoLogs && Array.isArray(dynamoLogs) && dynamoLogs.length > 0) {
+      // Mirror to tmp file for sync reads
+      try {
+        fs.writeFileSync(TMP_LOGS_FILE, JSON.stringify(dynamoLogs, null, 2), 'utf-8');
+      } catch {}
+      return dynamoLogs as unknown as NotificationLog[];
+    }
+  } catch (err) {
+    console.warn('Notice reading notification logs from DynamoDB:', err);
+  }
+
+  return getNotificationLogs();
+}
+
 // Clear logs
 export function clearNotificationLogs(): void {
   try {
@@ -226,6 +246,8 @@ export function clearNotificationLogs(): void {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(LOGS_FILE, JSON.stringify([], null, 2), 'utf-8');
   } catch {}
+
+  saveNotificationLogsToDynamoDB([]).catch(() => {});
 }
 
 // Append log
@@ -252,6 +274,9 @@ function addNotificationLog(log: Omit<NotificationLog, 'id' | 'timestamp'>): Not
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(LOGS_FILE, JSON.stringify(trimmed, null, 2), 'utf-8');
     } catch {}
+
+    // Persist to DynamoDB across all serverless containers
+    saveNotificationLogsToDynamoDB(trimmed as unknown as Record<string, unknown>[]).catch(() => {});
   } catch (err) {
     console.error('Error appending notification log:', err);
   }

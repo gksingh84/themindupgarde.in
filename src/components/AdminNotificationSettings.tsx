@@ -38,10 +38,27 @@ export function AdminNotificationSettings() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [showSmtp, setShowSmtp] = useState(false);
+  const [refreshingLogs, setRefreshingLogs] = useState(false);
 
-  // Fetch settings & logs on mount
+  const fetchLogsQuietly = async () => {
+    try {
+      const resLogs = await fetch(`/api/notifications/logs?t=${Date.now()}`);
+      if (resLogs.ok) {
+        const l = await resLogs.json();
+        setLogs(l);
+      }
+    } catch {}
+  };
+
+  // Fetch settings & logs on mount, and start auto-polling logs every 8s
   useEffect(() => {
     fetchData();
+
+    const interval = setInterval(() => {
+      fetchLogsQuietly();
+    }, 8000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchData = async () => {
@@ -384,20 +401,31 @@ export function AdminNotificationSettings() {
           <div className="flex items-center gap-3">
             <Bell className="w-5 h-5 text-indigo-500" />
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Recent Notification History Inbox</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Recent Notification History Inbox</h3>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Sync
+                </span>
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Real-time record of all triggered email alerts ({logs.length} logged)
+                Real-time record of all triggered email alerts ({logs.length} logged) • Auto-updates every 8s
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={fetchData}
-              className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Refresh inbox"
+              onClick={async () => {
+                setRefreshingLogs(true);
+                await fetchLogsQuietly();
+                setTimeout(() => setRefreshingLogs(false), 500);
+              }}
+              disabled={refreshingLogs}
+              className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+              title="Refresh inbox now"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${refreshingLogs ? 'animate-spin text-indigo-600' : ''}`} />
             </button>
             {logs.length > 0 && (
               <button

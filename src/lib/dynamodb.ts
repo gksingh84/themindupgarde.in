@@ -664,3 +664,48 @@ export async function getNotificationSettingsFromDynamoDB(): Promise<Record<stri
   }
   return null;
 }
+
+/**
+ * Save notification logs to AWS DynamoDB
+ */
+export async function saveNotificationLogsToDynamoDB(logs: Record<string, unknown>[]): Promise<boolean> {
+  if (!isDynamoDBConfigured()) return false;
+  try {
+    const client = getDynamoDBClient();
+    const command = new PutCommand({
+      TableName: getDynamoTableName(),
+      Item: {
+        id: '__tmu_notification_logs',
+        type: 'notification_logs',
+        logs: (logs || []).slice(0, 100),
+        updatedAt: new Date().toISOString(),
+      },
+    });
+    await client.send(command);
+    return true;
+  } catch (error) {
+    console.warn('DynamoDB saveNotificationLogs Notice:', error);
+    return false;
+  }
+}
+
+/**
+ * Fetch notification logs from AWS DynamoDB
+ */
+export async function getNotificationLogsFromDynamoDB(): Promise<Record<string, unknown>[] | null> {
+  if (!isDynamoDBConfigured()) return null;
+  try {
+    const client = getDynamoDBClient();
+    const command = new GetCommand({
+      TableName: getDynamoTableName(),
+      Key: { id: '__tmu_notification_logs' },
+    });
+    const res = await client.send(command);
+    if (res.Item && Array.isArray(res.Item.logs)) {
+      return res.Item.logs as Record<string, unknown>[];
+    }
+  } catch (error) {
+    console.warn('DynamoDB getNotificationLogs Notice:', error);
+  }
+  return null;
+}

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { Comment } from '@/types/blog';
 import { sendAdminNotification } from '@/lib/notification-service';
 
 const COMMENTS_FILE = path.join(process.cwd(), 'src/data/comments.json');
+const TMP_COMMENTS_FILE = path.join(os.tmpdir(), 'tmu_comments.json');
 
 const initialComments: Comment[] = [
   {
@@ -31,23 +33,30 @@ const initialComments: Comment[] = [
 
 function getCommentsServer(): Comment[] {
   try {
+    if (fs.existsSync(TMP_COMMENTS_FILE)) {
+      return JSON.parse(fs.readFileSync(TMP_COMMENTS_FILE, 'utf-8'));
+    }
     if (fs.existsSync(COMMENTS_FILE)) {
       return JSON.parse(fs.readFileSync(COMMENTS_FILE, 'utf-8'));
     }
   } catch (e) {
-    console.error('Error reading comments.json:', e);
+    console.error('Error reading comments:', e);
   }
   return initialComments;
 }
 
 function saveCommentsServer(comments: Comment[]): void {
   try {
+    fs.writeFileSync(TMP_COMMENTS_FILE, JSON.stringify(comments, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('Error writing tmp comments:', e);
+  }
+
+  try {
     const dir = path.dirname(COMMENTS_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(COMMENTS_FILE, JSON.stringify(comments, null, 2), 'utf-8');
-  } catch (e) {
-    console.error('Error writing comments.json:', e);
-  }
+  } catch {}
 }
 
 export async function GET(request: Request) {
@@ -81,18 +90,22 @@ export async function POST(request: Request) {
     comments.unshift(newComment);
     saveCommentsServer(comments);
 
-    // Trigger admin email notification asynchronously
-    sendAdminNotification({
-      type: 'comment',
-      title: `New Comment on "${body.postSlug}"`,
-      message: `${newComment.authorName} commented: "${newComment.content}"`,
-      details: {
-        authorName: newComment.authorName,
-        authorEmail: newComment.authorEmail,
-        postSlug: newComment.postSlug,
-        content: newComment.content,
-      },
-    }).catch((err) => console.error('Notification dispatch error:', err));
+    // Trigger admin email notification immediately before response so Lambda doesn't freeze
+    try {
+      await sendAdminNotification({
+        type: 'comment',
+        title: `💬 New Comment on "${body.postSlug}"`,
+        message: `${newComment.authorName} commented: "${newComment.content}"`,
+        details: {
+          authorName: newComment.authorName,
+          authorEmail: newComment.authorEmail,
+          postSlug: newComment.postSlug,
+          content: newComment.content,
+        },
+      });
+    } catch (err) {
+      console.error('Notification dispatch error on comment:', err);
+    }
 
     return NextResponse.json(newComment, { status: 201 });
   } catch (err) {
