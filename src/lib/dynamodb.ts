@@ -619,3 +619,48 @@ export async function purgeSampleSubscribersFromDynamoDB(): Promise<void> {
     }
   } catch {}
 }
+
+/**
+ * Save notification settings to AWS DynamoDB
+ */
+export async function saveNotificationSettingsToDynamoDB(settings: Record<string, unknown>): Promise<boolean> {
+  if (!isDynamoDBConfigured()) return false;
+  try {
+    const client = getDynamoDBClient();
+    const command = new PutCommand({
+      TableName: getDynamoTableName(),
+      Item: {
+        id: '__tmu_notification_settings',
+        type: 'notification_settings',
+        ...settings,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+    await client.send(command);
+    return true;
+  } catch (error) {
+    console.warn('DynamoDB saveNotificationSettings Notice:', error);
+    return false;
+  }
+}
+
+/**
+ * Fetch notification settings from AWS DynamoDB
+ */
+export async function getNotificationSettingsFromDynamoDB(): Promise<Record<string, unknown> | null> {
+  if (!isDynamoDBConfigured()) return null;
+  try {
+    const client = getDynamoDBClient();
+    const command = new GetCommand({
+      TableName: getDynamoTableName(),
+      Key: { id: '__tmu_notification_settings' },
+    });
+    const res = await client.send(command);
+    if (res.Item) {
+      return res.Item as Record<string, unknown>;
+    }
+  } catch (error) {
+    console.warn('DynamoDB getNotificationSettings Notice:', error);
+  }
+  return null;
+}

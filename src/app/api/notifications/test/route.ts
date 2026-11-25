@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
-import { sendAdminNotification, getNotificationSettings } from '@/lib/notification-service';
+import { sendAdminNotification, getNotificationSettingsAsync } from '@/lib/notification-service';
 
 export async function POST() {
   try {
-    const settings = getNotificationSettings();
+    const settings = await getNotificationSettingsAsync();
     if (!settings.adminEmail || !settings.adminEmail.includes('@')) {
       return NextResponse.json({ error: 'Please set a valid Admin Email ID first.' }, { status: 400 });
+    }
+
+    if (!settings.smtpPass && !process.env.SMTP_PASS) {
+      return NextResponse.json({
+        error: 'SMTP Password / App Password is not set. Please expand Custom SMTP Settings below, enter your 16-character Google App Password, and click "Save Email Settings".',
+      }, { status: 400 });
     }
 
     const result = await sendAdminNotification({
@@ -15,9 +21,16 @@ export async function POST() {
       details: { testTime: new Date().toISOString() },
     });
 
+    if (result.error || result.log.status === 'failed') {
+      return NextResponse.json({
+        error: `SMTP Delivery Failed: ${result.error || 'Authentication rejected'}. Please check your 16-character Google App Password.`,
+        log: result.log,
+      }, { status: 500 });
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Test notification generated for ${settings.adminEmail}`,
+      message: `Test email notification successfully delivered to ${settings.adminEmail}!`,
       log: result.log,
     });
   } catch (err) {

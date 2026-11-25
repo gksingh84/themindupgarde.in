@@ -55,13 +55,26 @@ export function AdminNotificationSettings() {
       if (resSettings.ok) {
         const s = await resSettings.json();
         setSettings(s);
+        try {
+          localStorage.setItem('tmu_notification_settings', JSON.stringify(s));
+        } catch {}
+      } else {
+        try {
+          const cached = localStorage.getItem('tmu_notification_settings');
+          if (cached) setSettings(JSON.parse(cached));
+        } catch {}
       }
+
       if (resLogs.ok) {
         const l = await resLogs.json();
         setLogs(l);
       }
     } catch (err) {
-      showToast('Failed to load notification settings', 'error');
+      try {
+        const cached = localStorage.getItem('tmu_notification_settings');
+        if (cached) setSettings(JSON.parse(cached));
+      } catch {}
+      showToast('Notification settings loaded from cache', 'info');
     } finally {
       setLoading(false);
     }
@@ -76,22 +89,35 @@ export function AdminNotificationSettings() {
 
     setSaving(true);
     try {
+      // Clean up inputs
+      const payload = {
+        ...settings,
+        adminEmail: settings.adminEmail.trim(),
+        smtpHost: settings.smtpHost?.trim() || 'smtp.gmail.com',
+        smtpPort: Number(settings.smtpPort) || 465,
+        smtpUser: settings.smtpUser?.trim() || settings.adminEmail.trim(),
+        smtpPass: settings.smtpPass ? settings.smtpPass.replace(/\s+/g, '') : '',
+      };
+
       const res = await fetch('/api/notifications/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
         const updated = await res.json();
         setSettings(updated);
-        showToast('Notification email settings updated successfully!', 'success');
+        try {
+          localStorage.setItem('tmu_notification_settings', JSON.stringify(updated));
+        } catch {}
+        showToast('Notification email settings saved successfully!', 'success');
       } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to save settings', 'error');
+        const err = await res.json().catch(() => ({}));
+        showToast(err.details || err.error || 'Failed to save settings', 'error');
       }
-    } catch (err) {
-      showToast('Failed to save notification settings', 'error');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save notification settings', 'error');
     } finally {
       setSaving(false);
     }
@@ -109,13 +135,14 @@ export function AdminNotificationSettings() {
       const data = await res.json();
 
       if (res.ok) {
-        showToast(`Test email alert sent to ${settings.adminEmail}!`, 'success');
+        showToast(data.message || `Test email alert sent to ${settings.adminEmail}!`, 'success');
         fetchData(); // Refresh log inbox
       } else {
-        showToast(data.error || 'Test email failed', 'error');
+        showToast(data.error || 'Test email delivery failed', 'error');
+        fetchData();
       }
-    } catch {
-      showToast('Failed to trigger test email', 'error');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to trigger test email', 'error');
     } finally {
       setTesting(false);
     }
@@ -276,57 +303,63 @@ export function AdminNotificationSettings() {
             </button>
 
             {showSmtp && (
-              <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    SMTP Host (e.g. smtp.gmail.com)
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.smtpHost || ''}
-                    onChange={(e) => setSettings({ ...settings, smtpHost: e.target.value })}
-                    placeholder="smtp.example.com"
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                  />
+              <div className="mt-4 p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      SMTP Host
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.smtpHost || ''}
+                      onChange={(e) => setSettings({ ...settings, smtpHost: e.target.value })}
+                      placeholder="smtp.gmail.com"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      SMTP Port (465 SSL or 587 TLS)
+                    </label>
+                    <input
+                      type="number"
+                      value={settings.smtpPort || 465}
+                      onChange={(e) => setSettings({ ...settings, smtpPort: Number(e.target.value) })}
+                      placeholder="465"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      SMTP Sender Account
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.smtpUser || ''}
+                      onChange={(e) => setSettings({ ...settings, smtpUser: e.target.value })}
+                      placeholder="mindupgrade.support@gmail.com"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      16-Character Google App Password
+                    </label>
+                    <input
+                      type="password"
+                      value={settings.smtpPass || ''}
+                      onChange={(e) => setSettings({ ...settings, smtpPass: e.target.value })}
+                      placeholder={settings.smtpPass ? '••••••••' : 'Enter 16-character code'}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white font-mono"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    SMTP Port
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.smtpPort || 587}
-                    onChange={(e) => setSettings({ ...settings, smtpPort: Number(e.target.value) })}
-                    placeholder="587"
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    SMTP User / Account Email
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.smtpUser || ''}
-                    onChange={(e) => setSettings({ ...settings, smtpUser: e.target.value })}
-                    placeholder="your-smtp-user@example.com"
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    SMTP Password / App Password
-                  </label>
-                  <input
-                    type="password"
-                    value={settings.smtpPass || ''}
-                    onChange={(e) => setSettings({ ...settings, smtpPass: e.target.value })}
-                    placeholder="••••••••••••"
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                  />
+                <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/50 dark:border-indigo-800/40 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                  💡 <strong>Gmail Tip:</strong> Use a 16-character App Password from Google Account &gt; Security &gt; 2-Step Verification &gt; App passwords. (Normal Google passwords are not accepted by Google SMTP).
                 </div>
               </div>
             )}
