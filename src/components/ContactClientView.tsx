@@ -46,7 +46,7 @@ export function ContactClientView() {
     },
     {
       q: 'How can I report a correction or suggest a topic?',
-      a: 'Send us a note through this form or email our editorial desk directly at contact@themindupgrade.in.',
+      a: 'Send us a note through this form or email our editorial desk directly at mindupgrade.support@gmail.com.',
     },
   ];
 
@@ -167,8 +167,8 @@ export function ContactClientView() {
                 </div>
                 <div>
                   <span className="text-charcoal-500 block text-[10px]">Email Address</span>
-                  <a href="mailto:contact@themindupgrade.in" className="font-semibold text-navy-800 dark:text-offwhite hover:text-amberBrand">
-                    contact@themindupgrade.in
+                  <a href="mailto:mindupgrade.support@gmail.com" className="font-semibold text-navy-800 dark:text-offwhite hover:text-amberBrand">
+                    mindupgrade.support@gmail.com
                   </a>
                 </div>
               </div>

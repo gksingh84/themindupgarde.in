@@ -33,7 +33,7 @@ export default function PrivacyPolicyPage() {
 
         <h2>3. Newsletter and Unsubscribe Rights</h2>
         <p>
-          If you subscribe to our weekly newsletter, you may unsubscribe at any time using the one-click unsubscribe link in any email footer or by contacting us at <code>contact@themindupgrade.in</code>.
+          If you subscribe to our weekly newsletter, you may unsubscribe at any time using the one-click unsubscribe link in any email footer or by contacting us at <code>mindupgrade.support@gmail.com</code>.
         </p>
 
         <h2>4. Data Storage and Security</h2>
@@ -43,7 +43,7 @@ export default function PrivacyPolicyPage() {
 
         <h2>5. Contact Us</h2>
         <p>
-          For any privacy questions or requests regarding your data, please email <a href="mailto:contact@themindupgrade.in" className="text-amberBrand underline">contact@themindupgrade.in</a>.
+          For any privacy questions or requests regarding your data, please email <a href="mailto:mindupgrade.support@gmail.com" className="text-amberBrand underline">mindupgrade.support@gmail.com</a>.
         </p>
       </div>
     </div>

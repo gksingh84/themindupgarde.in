@@ -94,7 +94,9 @@ export function Footer() {
               </div>
               <div className="flex items-center gap-1.5 text-xs text-slate-400">
                 <Mail className="w-3.5 h-3.5 text-slate-400" />
-                <span>contact@themindupgrade.in</span>
+                <a href="mailto:mindupgrade.support@gmail.com" className="hover:text-amberBrand transition-colors">
+                  <span>mindupgrade.support@gmail.com</span>
+                </a>
               </div>
             </div>
           </div>
