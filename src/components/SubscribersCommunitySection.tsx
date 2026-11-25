@@ -202,7 +202,9 @@ export function SubscribersCommunitySection({
             ) : paginatedSubscribers.length === 0 ? (
               <tr>
                 <td colSpan={isAdmin ? 6 : 5} className="px-4 py-8 text-center text-slate-500">
-                  No subscribers found matching &quot;{searchQuery}&quot;.
+                  {searchQuery
+                    ? `No subscribers found matching "${searchQuery}".`
+                    : 'No community subscribers registered yet. Subscribe above to join our reader community!'}
                 </td>
               </tr>
             ) : (

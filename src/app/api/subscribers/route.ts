@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getSubscribersServer, saveSubscribersServer, Subscriber } from '@/lib/subscriber-service';
+import {
+  getSubscribersServerAsync,
+  addSubscriberServerAsync,
+  deleteSubscriberServerAsync,
+  Subscriber,
+} from '@/lib/subscriber-service';
 import { formatDateDDMMYYYY } from '@/lib/date-utils';
 import { sendAdminNotification } from '@/lib/notification-service';
 
 export async function GET() {
   try {
-    const subscribers = getSubscribersServer();
+    const subscribers = await getSubscribersServerAsync();
     return NextResponse.json(subscribers);
   } catch (err) {
     return NextResponse.json({ error: 'Failed to fetch subscribers' }, { status: 500 });
@@ -21,25 +26,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Valid email is required' }, { status: 400 });
     }
 
-    const subscribers = getSubscribersServer();
-    const existing = subscribers.find((s) => s.email.toLowerCase() === email.toLowerCase());
+    const cleanEmail = email.trim().toLowerCase();
+    const subscribers = await getSubscribersServerAsync();
+    const existing = subscribers.find((s) => s.email.toLowerCase() === cleanEmail);
 
     if (existing) {
       return NextResponse.json(existing, { status: 200 });
     }
 
     const newSub: Subscriber = {
-      id: `sub_${Date.now()}`,
-      email: email.trim().toLowerCase(),
-      name: name || email.split('@')[0],
+      id: `subscriber#${cleanEmail}`,
+      email: cleanEmail,
+      name: name || cleanEmail.split('@')[0],
       subscribedAt: formatDateDDMMYYYY(new Date()),
       status: 'active',
     };
 
-    subscribers.unshift(newSub);
-    saveSubscribersServer(subscribers);
+    await addSubscriberServerAsync(newSub);
 
-    // Trigger admin email notification asynchronously
+    // Trigger admin email notification asynchronously to mindupgrade.support@gmail.com
     sendAdminNotification({
       type: 'subscriber',
       title: '📧 New Community Subscriber!',
@@ -63,9 +68,10 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id');
     const email = searchParams.get('email');
 
-    let subscribers = getSubscribersServer();
-    subscribers = subscribers.filter((s) => s.id !== id && s.email.toLowerCase() !== (email || '').toLowerCase());
-    saveSubscribersServer(subscribers);
+    const target = id || email;
+    if (target) {
+      await deleteSubscriberServerAsync(target);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

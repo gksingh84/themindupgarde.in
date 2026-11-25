@@ -8,7 +8,7 @@ import {
   DeleteCommand,
   BatchWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { BlogPost } from '@/types/blog';
+import { BlogPost, Subscriber } from '@/types/blog';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -476,4 +476,127 @@ export async function decrementBlogLikesInDynamoDB(id: string): Promise<number |
     console.error(`DynamoDB like decrement error for ${id}:`, error);
     return null;
   }
+}
+
+/**
+ * Fetch all actual subscribers from AWS DynamoDB.
+ */
+export async function getAllSubscribersFromDynamoDB(): Promise<Subscriber[] | null> {
+  if (!isDynamoDBConfigured()) return null;
+  try {
+    const client = getDynamoDBClient();
+    const command = new ScanCommand({
+      TableName: getDynamoTableName(),
+      FilterExpression: '#type = :sub OR begins_with(#id, :prefix)',
+      ExpressionAttributeNames: {
+        '#type': 'type',
+        '#id': 'id',
+      },
+      ExpressionAttributeValues: {
+        ':sub': 'subscriber',
+        ':prefix': 'subscriber#',
+      },
+    });
+    const res = await client.send(command);
+    if (!res.Items) return [];
+    return (res.Items as any[])
+      .filter((item) => item && item.email && !item.email.includes('example.com'))
+      .map((item) => ({
+        id: String(item.id),
+        email: String(item.email),
+        name: item.name ? String(item.name) : undefined,
+        subscribedAt: String(item.subscribedAt || new Date().toISOString()),
+        status: (item.status === 'unsubscribed' ? 'unsubscribed' : 'active') as 'active' | 'unsubscribed',
+      }));
+  } catch (error) {
+    console.warn('DynamoDB Subscribers Scan Notice:', error);
+    return null;
+  }
+}
+
+/**
+ * Save an actual subscriber to AWS DynamoDB.
+ */
+export async function saveSubscriberToDynamoDB(sub: Subscriber): Promise<boolean> {
+  if (!isDynamoDBConfigured() || !sub || !sub.email) return false;
+  try {
+    const client = getDynamoDBClient();
+    const cleanEmail = sub.email.toLowerCase().trim();
+    const command = new PutCommand({
+      TableName: getDynamoTableName(),
+      Item: {
+        id: `subscriber#${cleanEmail}`,
+        type: 'subscriber',
+        email: cleanEmail,
+        name: sub.name || cleanEmail.split('@')[0],
+        subscribedAt: sub.subscribedAt || new Date().toISOString(),
+        status: sub.status || 'active',
+        updatedAt: new Date().toISOString(),
+      },
+    });
+    await client.send(command);
+    return true;
+  } catch (error) {
+    console.error(`DynamoDB saveSubscriber Error for ${sub.email}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Delete a subscriber by ID or Email from AWS DynamoDB.
+ */
+export async function deleteSubscriberFromDynamoDB(idOrEmail: string): Promise<boolean> {
+  if (!isDynamoDBConfigured() || !idOrEmail) return false;
+  try {
+    const client = getDynamoDBClient();
+    const targetId = idOrEmail.startsWith('subscriber#')
+      ? idOrEmail
+      : `subscriber#${idOrEmail.toLowerCase().trim()}`;
+    const command = new DeleteCommand({
+      TableName: getDynamoTableName(),
+      Key: { id: targetId },
+    });
+    await client.send(command);
+    return true;
+  } catch (error) {
+    console.error(`DynamoDB deleteSubscriber Error for ${idOrEmail}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Purge any legacy sample subscribers from DynamoDB.
+ */
+export async function purgeSampleSubscribersFromDynamoDB(): Promise<void> {
+  if (!isDynamoDBConfigured()) return;
+  try {
+    const client = getDynamoDBClient();
+    const command = new ScanCommand({
+      TableName: getDynamoTableName(),
+      FilterExpression: '#type = :sub OR begins_with(#id, :prefix) OR contains(#email, :ex)',
+      ExpressionAttributeNames: {
+        '#type': 'type',
+        '#id': 'id',
+        '#email': 'email',
+      },
+      ExpressionAttributeValues: {
+        ':sub': 'subscriber',
+        ':prefix': 'subscriber#',
+        ':ex': 'example.com',
+      },
+    });
+    const res = await client.send(command);
+    if (res.Items && res.Items.length > 0) {
+      for (const item of res.Items) {
+        if (item.email && item.email.includes('example.com')) {
+          await client.send(
+            new DeleteCommand({
+              TableName: getDynamoTableName(),
+              Key: { id: item.id },
+            })
+          );
+        }
+      }
+    }
+  } catch {}
 }
