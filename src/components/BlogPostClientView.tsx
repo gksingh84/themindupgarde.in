@@ -151,11 +151,18 @@ export function BlogPostClientView({
     setHasLiked(ClientStorage.isLiked(post.slug));
     setIsBookmarked(ClientStorage.isBookmarked(post.slug));
 
-    // Register view count once per browser session
+    // Register view count
     const sessionKey = `viewed_${post.id}`;
     if (typeof window !== 'undefined' && !sessionStorage.getItem(sessionKey)) {
       sessionStorage.setItem(sessionKey, 'true');
-      fetch(`/api/blogs/${post.id}/view`, { method: 'POST' }).catch(() => {});
+      fetch(`/api/blogs/${post.id}/view`, { method: 'POST' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && typeof data.views === 'number') {
+            setPost((prev) => (prev ? { ...prev, views: data.views } : prev));
+          }
+        })
+        .catch(() => {});
     }
 
     // Fetch comments
@@ -206,7 +213,16 @@ export function BlogPostClientView({
         setHasLiked(false);
         setLikes((prev) => Math.max(0, prev - 1));
         showToast('Like removed', 'info');
-        fetch(`/api/blogs/${post.id}/like`, { method: 'DELETE' }).catch(() => {});
+        try {
+          const res = await fetch(`/api/blogs/${post.id}/like`, { method: 'DELETE' });
+          if (res.ok) {
+            const data = await res.json();
+            if (typeof data.likes === 'number') {
+              setLikes(data.likes);
+              setPost((prev) => (prev ? { ...prev, likes: data.likes } : prev));
+            }
+          }
+        } catch {}
       }
       return;
     }
@@ -216,7 +232,16 @@ export function BlogPostClientView({
       setHasLiked(true);
       setLikes((prev) => prev + 1);
       showToast('Thank you for appreciating this publication!', 'success');
-      fetch(`/api/blogs/${post.id}/like`, { method: 'POST' }).catch(() => {});
+      try {
+        const res = await fetch(`/api/blogs/${post.id}/like`, { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.likes === 'number') {
+            setLikes(data.likes);
+            setPost((prev) => (prev ? { ...prev, likes: data.likes } : prev));
+          }
+        }
+      } catch {}
     }
   };
 

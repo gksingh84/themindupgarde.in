@@ -23,6 +23,13 @@ const envKeys = [
   'ADMIN_PASSWORD',
   'APP_ADMIN_PASSWORD',
   'NEXT_PUBLIC_ADMIN_PASSWORD',
+  'ADMIN_NOTIFICATION_EMAIL',
+  'ADMIN_EMAIL',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM',
 ];
 
 const envLines = [];
@@ -39,6 +46,9 @@ if (!envLines.some((l) => l.startsWith('ADMIN_PASSWORD='))) {
 }
 if (!envLines.some((l) => l.startsWith('NEXT_PUBLIC_ADMIN_PASSWORD='))) {
   envLines.push(`NEXT_PUBLIC_ADMIN_PASSWORD=${process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'adminpassword@7531'}`);
+}
+if (!envLines.some((l) => l.startsWith('ADMIN_NOTIFICATION_EMAIL='))) {
+  envLines.push(`ADMIN_NOTIFICATION_EMAIL=${process.env.ADMIN_NOTIFICATION_EMAIL || 'mindupgrade.support@gmail.com'}`);
 }
 
 // Also capture any other key starting with APP_AWS_, DYNAMO, or TMU_

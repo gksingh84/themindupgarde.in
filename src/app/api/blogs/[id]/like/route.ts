@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getBlogsServer, saveBlogsServer } from '@/lib/blog-service';
+import { incrementBlogLikesAsync, decrementBlogLikesAsync } from '@/lib/blog-service';
 import { sendAdminNotification } from '@/lib/notification-service';
 
 export async function POST(
@@ -8,29 +8,25 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const blogs = getBlogsServer();
-    const index = blogs.findIndex((b) => b.id === id || b.slug === id);
+    const blog = await incrementBlogLikesAsync(id);
 
-    if (index === -1) {
+    if (!blog) {
       return NextResponse.json({ error: 'Blog not found' }, { status: 404 });
     }
-
-    blogs[index].likes = (blogs[index].likes || 0) + 1;
-    saveBlogsServer(blogs);
 
     // Trigger admin email notification asynchronously
     sendAdminNotification({
       type: 'like',
-      title: `❤️ New Like on "${blogs[index].title}"`,
-      message: `Someone liked your article "${blogs[index].title}". Total likes: ${blogs[index].likes}`,
+      title: `❤️ New Like on "${blog.title}"`,
+      message: `Someone liked your article "${blog.title}". Total likes: ${blog.likes}`,
       details: {
-        blogId: blogs[index].id,
-        blogTitle: blogs[index].title,
-        totalLikes: blogs[index].likes,
+        blogId: blog.id,
+        blogTitle: blog.title,
+        totalLikes: blog.likes,
       },
     }).catch((err) => console.error('Notification dispatch error:', err));
 
-    return NextResponse.json({ likes: blogs[index].likes });
+    return NextResponse.json({ likes: blog.likes });
   } catch (err) {
     return NextResponse.json({ error: 'Failed to increment likes', details: String(err) }, { status: 500 });
   }
@@ -42,17 +38,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const blogs = getBlogsServer();
-    const index = blogs.findIndex((b) => b.id === id || b.slug === id);
+    const blog = await decrementBlogLikesAsync(id);
 
-    if (index === -1) {
+    if (!blog) {
       return NextResponse.json({ error: 'Blog not found' }, { status: 404 });
     }
 
-    blogs[index].likes = Math.max(0, (blogs[index].likes || 0) - 1);
-    saveBlogsServer(blogs);
-
-    return NextResponse.json({ likes: blogs[index].likes });
+    return NextResponse.json({ likes: blog.likes });
   } catch (err) {
     return NextResponse.json({ error: 'Failed to decrement likes', details: String(err) }, { status: 500 });
   }

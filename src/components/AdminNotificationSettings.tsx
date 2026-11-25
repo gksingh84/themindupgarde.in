@@ -185,7 +185,7 @@ export function AdminNotificationSettings() {
                 required
                 value={settings.adminEmail}
                 onChange={(e) => setSettings({ ...settings, adminEmail: e.target.value })}
-                placeholder="e.g. gaurav@themindupgrade.in or your-email@gmail.com"
+                placeholder="e.g. mindupgrade.support@gmail.com"
                 className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>

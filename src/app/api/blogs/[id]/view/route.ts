@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getBlogsServer, saveBlogsServer } from '@/lib/blog-service';
+import { incrementBlogViewsAsync } from '@/lib/blog-service';
 
 export async function POST(
   request: Request,
@@ -7,17 +7,13 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const blogs = getBlogsServer();
-    const index = blogs.findIndex((b) => b.id === id || b.slug === id);
+    const blog = await incrementBlogViewsAsync(id);
 
-    if (index === -1) {
+    if (!blog) {
       return NextResponse.json({ error: 'Blog not found' }, { status: 404 });
     }
 
-    blogs[index].views = (blogs[index].views || 0) + 1;
-    saveBlogsServer(blogs);
-
-    return NextResponse.json({ success: true, views: blogs[index].views });
+    return NextResponse.json({ success: true, views: blog.views });
   } catch (err) {
     return NextResponse.json({ error: 'Failed to increment view count', details: String(err) }, { status: 500 });
   }

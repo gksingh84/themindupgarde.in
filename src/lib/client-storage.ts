@@ -170,6 +170,26 @@ export const ClientStorage = {
   getMergedBlogs(initialBlogs: BlogPost[] = []): BlogPost[] {
     if (typeof window === 'undefined') return initialBlogs;
 
+    // One-time stats reset migration in local browser
+    try {
+      if (localStorage.getItem('tmu_stats_reset_v1') !== 'true') {
+        localStorage.setItem('tmu_stats_reset_v1', 'true');
+        localStorage.removeItem(LIKES_KEY);
+        const custom = this.getCustomBlogs();
+        let modified = false;
+        for (const k in custom) {
+          if (custom[k]) {
+            custom[k].views = 0;
+            custom[k].likes = 0;
+            modified = true;
+          }
+        }
+        if (modified) {
+          localStorage.setItem(CUSTOM_BLOGS_KEY, JSON.stringify(custom));
+        }
+      }
+    } catch {}
+
     const deletedIds = this.getDeletedBlogIds();
     const customMap = this.getCustomBlogs();
 

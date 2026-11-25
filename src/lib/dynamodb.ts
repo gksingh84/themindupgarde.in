@@ -4,6 +4,7 @@ import {
   ScanCommand,
   GetCommand,
   PutCommand,
+  UpdateCommand,
   DeleteCommand,
   BatchWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
@@ -207,7 +208,9 @@ export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[] | null> {
       return [];
     }
 
-    return response.Items as BlogPost[];
+    return (response.Items as BlogPost[]).filter(
+      (b) => b && b.id && !String(b.id).startsWith('__')
+    );
   } catch (error) {
     console.warn('DynamoDB Scan Notice (will use local fallback):', error);
     return null;
@@ -381,5 +384,96 @@ export async function seedDynamoDBIfEmpty(seedBlogs: BlogPost[]): Promise<boolea
   } catch (error) {
     console.warn('DynamoDB seed notice:', error);
     return false;
+  }
+}
+
+/**
+ * Atomically increment views for a blog in AWS DynamoDB.
+ */
+export async function incrementBlogViewsInDynamoDB(id: string): Promise<number | null> {
+  if (!isDynamoDBConfigured() || !id) return null;
+  try {
+    const client = getDynamoDBClient();
+    const command = new UpdateCommand({
+      TableName: getDynamoTableName(),
+      Key: { id },
+      UpdateExpression: 'SET #views = if_not_exists(#views, :zero) + :inc, #updatedAt = :now',
+      ExpressionAttributeNames: {
+        '#views': 'views',
+        '#updatedAt': 'updatedAt',
+      },
+      ExpressionAttributeValues: {
+        ':zero': 0,
+        ':inc': 1,
+        ':now': new Date().toISOString(),
+      },
+      ReturnValues: 'UPDATED_NEW',
+    });
+    const res = await client.send(command);
+    return typeof res.Attributes?.views === 'number' ? res.Attributes.views : null;
+  } catch (error) {
+    console.error(`DynamoDB view increment error for ${id}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Atomically increment likes for a blog in AWS DynamoDB.
+ */
+export async function incrementBlogLikesInDynamoDB(id: string): Promise<number | null> {
+  if (!isDynamoDBConfigured() || !id) return null;
+  try {
+    const client = getDynamoDBClient();
+    const command = new UpdateCommand({
+      TableName: getDynamoTableName(),
+      Key: { id },
+      UpdateExpression: 'SET #likes = if_not_exists(#likes, :zero) + :inc, #updatedAt = :now',
+      ExpressionAttributeNames: {
+        '#likes': 'likes',
+        '#updatedAt': 'updatedAt',
+      },
+      ExpressionAttributeValues: {
+        ':zero': 0,
+        ':inc': 1,
+        ':now': new Date().toISOString(),
+      },
+      ReturnValues: 'UPDATED_NEW',
+    });
+    const res = await client.send(command);
+    return typeof res.Attributes?.likes === 'number' ? res.Attributes.likes : null;
+  } catch (error) {
+    console.error(`DynamoDB like increment error for ${id}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Atomically decrement likes for a blog in AWS DynamoDB (never below 0).
+ */
+export async function decrementBlogLikesInDynamoDB(id: string): Promise<number | null> {
+  if (!isDynamoDBConfigured() || !id) return null;
+  try {
+    const current = await getBlogByIdOrSlugFromDynamoDB(id);
+    const newLikes = Math.max(0, (current?.likes || 0) - 1);
+    const client = getDynamoDBClient();
+    const command = new UpdateCommand({
+      TableName: getDynamoTableName(),
+      Key: { id },
+      UpdateExpression: 'SET #likes = :val, #updatedAt = :now',
+      ExpressionAttributeNames: {
+        '#likes': 'likes',
+        '#updatedAt': 'updatedAt',
+      },
+      ExpressionAttributeValues: {
+        ':val': newLikes,
+        ':now': new Date().toISOString(),
+      },
+      ReturnValues: 'UPDATED_NEW',
+    });
+    const res = await client.send(command);
+    return typeof res.Attributes?.likes === 'number' ? res.Attributes.likes : newLikes;
+  } catch (error) {
+    console.error(`DynamoDB like decrement error for ${id}:`, error);
+    return null;
   }
 }

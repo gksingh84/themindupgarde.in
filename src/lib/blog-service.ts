@@ -12,6 +12,9 @@ import {
   saveBlogToDynamoDB,
   deleteBlogFromDynamoDB,
   seedDynamoDBIfEmpty,
+  incrementBlogViewsInDynamoDB,
+  incrementBlogLikesInDynamoDB,
+  decrementBlogLikesInDynamoDB,
 } from '@/lib/dynamodb';
 
 const DATA_FILE = path.join(process.cwd(), 'src/data/blogs.json');
@@ -36,10 +39,35 @@ export async function getBlogsServerAsync(forceRefresh = false): Promise<BlogPos
     try {
       const dynamoBlogs = await getAllBlogsFromDynamoDB();
       if (dynamoBlogs && dynamoBlogs.length > 0) {
+        // One-time stats reset migration in DynamoDB
+        let targetBlogs = dynamoBlogs.filter((b) => b.id && !String(b.id).startsWith('__'));
+        const resetMarker = dynamoBlogs.find((b) => b.id === '__tmu_stats_reset_v1');
+
+        if (!resetMarker) {
+          console.log('[DynamoDB] Performing one-time reset of views and likes to 0...');
+          targetBlogs = targetBlogs.map((b) => ({ ...b, views: 0, likes: 0 }));
+          Promise.all(targetBlogs.map(saveBlogToDynamoDB))
+            .then(() => {
+              saveBlogToDynamoDB({
+                id: '__tmu_stats_reset_v1',
+                slug: '__tmu_stats_reset_v1',
+                title: 'Stats Reset Marker',
+                content: '',
+                excerpt: '',
+                category: 'System',
+                publishedAt: new Date().toISOString(),
+                status: 'draft',
+                views: 0,
+                likes: 0,
+              } as BlogPost).catch(() => {});
+            })
+            .catch(() => {});
+        }
+
         // Auto-publish any scheduled posts whose scheduledAt has passed
         const isoNow = new Date().toISOString();
         let updated = false;
-        const processed = dynamoBlogs.map((b) => {
+        const processed = targetBlogs.map((b) => {
           if (b.status === 'scheduled' && b.scheduledAt && b.scheduledAt <= isoNow) {
             updated = true;
             return { ...b, status: 'published' as const };
@@ -497,4 +525,104 @@ export async function getBlogsDb(): Promise<BlogPost[]> {
 export async function createOrUpdateBlogDb(blog: BlogPost): Promise<BlogPost> {
   await saveBlogServerAsync(blog);
   return blog;
+}
+
+/**
+ * Increment blog views across DynamoDB, in-memory cache, and fallback files.
+ */
+export async function incrementBlogViewsAsync(idOrSlug: string): Promise<BlogPost | null> {
+  const blogs = getBlogsServer();
+  const index = blogs.findIndex((b) => b.id === idOrSlug || b.slug === idOrSlug);
+
+  let newViews: number | null = null;
+
+  if (isDynamoDBConfigured()) {
+    try {
+      const targetId = index > -1 ? blogs[index].id : idOrSlug;
+      newViews = await incrementBlogViewsInDynamoDB(targetId);
+    } catch (e) {
+      console.warn('DynamoDB view increment failed, falling back to local:', e);
+    }
+  }
+
+  if (index > -1) {
+    blogs[index].views = typeof newViews === 'number' ? newViews : (blogs[index].views || 0) + 1;
+    saveBlogsServer(blogs);
+    return blogs[index];
+  } else if (typeof newViews === 'number') {
+    // If blog was only in DynamoDB
+    const fromDb = await getBlogByIdOrSlugFromDynamoDB(idOrSlug);
+    if (fromDb) {
+      fromDb.views = newViews;
+      return fromDb;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Increment blog likes across DynamoDB, in-memory cache, and fallback files.
+ */
+export async function incrementBlogLikesAsync(idOrSlug: string): Promise<BlogPost | null> {
+  const blogs = getBlogsServer();
+  const index = blogs.findIndex((b) => b.id === idOrSlug || b.slug === idOrSlug);
+
+  let newLikes: number | null = null;
+
+  if (isDynamoDBConfigured()) {
+    try {
+      const targetId = index > -1 ? blogs[index].id : idOrSlug;
+      newLikes = await incrementBlogLikesInDynamoDB(targetId);
+    } catch (e) {
+      console.warn('DynamoDB like increment failed, falling back to local:', e);
+    }
+  }
+
+  if (index > -1) {
+    blogs[index].likes = typeof newLikes === 'number' ? newLikes : (blogs[index].likes || 0) + 1;
+    saveBlogsServer(blogs);
+    return blogs[index];
+  } else if (typeof newLikes === 'number') {
+    const fromDb = await getBlogByIdOrSlugFromDynamoDB(idOrSlug);
+    if (fromDb) {
+      fromDb.likes = newLikes;
+      return fromDb;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Decrement blog likes across DynamoDB, in-memory cache, and fallback files.
+ */
+export async function decrementBlogLikesAsync(idOrSlug: string): Promise<BlogPost | null> {
+  const blogs = getBlogsServer();
+  const index = blogs.findIndex((b) => b.id === idOrSlug || b.slug === idOrSlug);
+
+  let newLikes: number | null = null;
+
+  if (isDynamoDBConfigured()) {
+    try {
+      const targetId = index > -1 ? blogs[index].id : idOrSlug;
+      newLikes = await decrementBlogLikesInDynamoDB(targetId);
+    } catch (e) {
+      console.warn('DynamoDB like decrement failed, falling back to local:', e);
+    }
+  }
+
+  if (index > -1) {
+    blogs[index].likes = typeof newLikes === 'number' ? newLikes : Math.max(0, (blogs[index].likes || 0) - 1);
+    saveBlogsServer(blogs);
+    return blogs[index];
+  } else if (typeof newLikes === 'number') {
+    const fromDb = await getBlogByIdOrSlugFromDynamoDB(idOrSlug);
+    if (fromDb) {
+      fromDb.likes = newLikes;
+      return fromDb;
+    }
+  }
+
+  return null;
 }

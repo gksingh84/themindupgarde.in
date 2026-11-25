@@ -29,7 +29,10 @@ const SETTINGS_FILE = path.join(process.cwd(), 'src/data/notification-settings.j
 const LOGS_FILE = path.join(process.cwd(), 'src/data/notification-logs.json');
 
 const defaultSettings: NotificationSettings = {
-  adminEmail: 'gaurav@themindupgrade.in',
+  adminEmail:
+    process.env.ADMIN_NOTIFICATION_EMAIL ||
+    process.env.ADMIN_EMAIL ||
+    'mindupgrade.support@gmail.com',
   notifyOnComment: true,
   notifyOnLike: true,
   notifyOnSubscriber: true,
