@@ -39,30 +39,7 @@ export async function getBlogsServerAsync(forceRefresh = false): Promise<BlogPos
     try {
       const dynamoBlogs = await getAllBlogsFromDynamoDB();
       if (dynamoBlogs && dynamoBlogs.length > 0) {
-        // One-time stats reset migration in DynamoDB
-        let targetBlogs = dynamoBlogs.filter((b) => b.id && !String(b.id).startsWith('__'));
-        const resetMarker = dynamoBlogs.find((b) => b.id === '__tmu_stats_reset_v1');
-
-        if (!resetMarker) {
-          console.log('[DynamoDB] Performing one-time reset of views and likes to 0...');
-          targetBlogs = targetBlogs.map((b) => ({ ...b, views: 0, likes: 0 }));
-          Promise.all(targetBlogs.map(saveBlogToDynamoDB))
-            .then(() => {
-              saveBlogToDynamoDB({
-                id: '__tmu_stats_reset_v1',
-                slug: '__tmu_stats_reset_v1',
-                title: 'Stats Reset Marker',
-                content: '',
-                excerpt: '',
-                category: 'System',
-                publishedAt: new Date().toISOString(),
-                status: 'draft',
-                views: 0,
-                likes: 0,
-              } as BlogPost).catch(() => {});
-            })
-            .catch(() => {});
-        }
+        const targetBlogs = dynamoBlogs.filter((b) => b.id && !String(b.id).startsWith('__'));
 
         // Auto-publish any scheduled posts whose scheduledAt has passed
         const isoNow = new Date().toISOString();
@@ -533,25 +510,33 @@ export async function createOrUpdateBlogDb(blog: BlogPost): Promise<BlogPost> {
 export async function incrementBlogViewsAsync(idOrSlug: string): Promise<BlogPost | null> {
   const blogs = getBlogsServer();
   const index = blogs.findIndex((b) => b.id === idOrSlug || b.slug === idOrSlug);
+  let targetId = index > -1 ? blogs[index].id : idOrSlug;
 
   let newViews: number | null = null;
 
   if (isDynamoDBConfigured()) {
     try {
-      const targetId = index > -1 ? blogs[index].id : idOrSlug;
+      // Resolve actual primary key id if slug was passed
+      const fromDb = await getBlogByIdOrSlugFromDynamoDB(idOrSlug);
+      if (fromDb && fromDb.id) {
+        targetId = fromDb.id;
+      }
       newViews = await incrementBlogViewsInDynamoDB(targetId);
     } catch (e) {
       console.warn('DynamoDB view increment failed, falling back to local:', e);
     }
   }
 
+  // Invalidate in-memory server cache so next fetch gets fresh counts
+  cachedBlogs = null;
+  lastCacheTime = 0;
+
   if (index > -1) {
     blogs[index].views = typeof newViews === 'number' ? newViews : (blogs[index].views || 0) + 1;
     saveBlogsServer(blogs);
     return blogs[index];
   } else if (typeof newViews === 'number') {
-    // If blog was only in DynamoDB
-    const fromDb = await getBlogByIdOrSlugFromDynamoDB(idOrSlug);
+    const fromDb = await getBlogByIdOrSlugFromDynamoDB(targetId);
     if (fromDb) {
       fromDb.views = newViews;
       return fromDb;
@@ -567,24 +552,32 @@ export async function incrementBlogViewsAsync(idOrSlug: string): Promise<BlogPos
 export async function incrementBlogLikesAsync(idOrSlug: string): Promise<BlogPost | null> {
   const blogs = getBlogsServer();
   const index = blogs.findIndex((b) => b.id === idOrSlug || b.slug === idOrSlug);
+  let targetId = index > -1 ? blogs[index].id : idOrSlug;
 
   let newLikes: number | null = null;
 
   if (isDynamoDBConfigured()) {
     try {
-      const targetId = index > -1 ? blogs[index].id : idOrSlug;
+      const fromDb = await getBlogByIdOrSlugFromDynamoDB(idOrSlug);
+      if (fromDb && fromDb.id) {
+        targetId = fromDb.id;
+      }
       newLikes = await incrementBlogLikesInDynamoDB(targetId);
     } catch (e) {
       console.warn('DynamoDB like increment failed, falling back to local:', e);
     }
   }
 
+  // Invalidate in-memory server cache
+  cachedBlogs = null;
+  lastCacheTime = 0;
+
   if (index > -1) {
     blogs[index].likes = typeof newLikes === 'number' ? newLikes : (blogs[index].likes || 0) + 1;
     saveBlogsServer(blogs);
     return blogs[index];
   } else if (typeof newLikes === 'number') {
-    const fromDb = await getBlogByIdOrSlugFromDynamoDB(idOrSlug);
+    const fromDb = await getBlogByIdOrSlugFromDynamoDB(targetId);
     if (fromDb) {
       fromDb.likes = newLikes;
       return fromDb;
@@ -600,24 +593,32 @@ export async function incrementBlogLikesAsync(idOrSlug: string): Promise<BlogPos
 export async function decrementBlogLikesAsync(idOrSlug: string): Promise<BlogPost | null> {
   const blogs = getBlogsServer();
   const index = blogs.findIndex((b) => b.id === idOrSlug || b.slug === idOrSlug);
+  let targetId = index > -1 ? blogs[index].id : idOrSlug;
 
   let newLikes: number | null = null;
 
   if (isDynamoDBConfigured()) {
     try {
-      const targetId = index > -1 ? blogs[index].id : idOrSlug;
+      const fromDb = await getBlogByIdOrSlugFromDynamoDB(idOrSlug);
+      if (fromDb && fromDb.id) {
+        targetId = fromDb.id;
+      }
       newLikes = await decrementBlogLikesInDynamoDB(targetId);
     } catch (e) {
       console.warn('DynamoDB like decrement failed, falling back to local:', e);
     }
   }
 
+  // Invalidate in-memory server cache
+  cachedBlogs = null;
+  lastCacheTime = 0;
+
   if (index > -1) {
     blogs[index].likes = typeof newLikes === 'number' ? newLikes : Math.max(0, (blogs[index].likes || 0) - 1);
     saveBlogsServer(blogs);
     return blogs[index];
   } else if (typeof newLikes === 'number') {
-    const fromDb = await getBlogByIdOrSlugFromDynamoDB(idOrSlug);
+    const fromDb = await getBlogByIdOrSlugFromDynamoDB(targetId);
     if (fromDb) {
       fromDb.likes = newLikes;
       return fromDb;

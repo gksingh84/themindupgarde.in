@@ -110,8 +110,8 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       reqHeaders['x-dynamo-creds'] = JSON.stringify(storedCreds);
     }
 
-    // Always fetch fresh blogs from DynamoDB via /api/blogs
-    fetch('/api/blogs?includeDrafts=true', { headers: reqHeaders })
+    // Always fetch fresh blogs from DynamoDB via /api/blogs without browser caching
+    fetch('/api/blogs?includeDrafts=true', { headers: reqHeaders, cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((fresh) => {
         if (Array.isArray(fresh) && fresh.length > 0) {

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const search = searchParams.get('search');
   const includeDrafts = searchParams.get('includeDrafts') === 'true';
 
-  let blogs = await getBlogsServerAsync();
+  let blogs = await getBlogsServerAsync(true);
 
   if (!includeDrafts) {
     blogs = blogs.filter((b) => b.status === 'published');

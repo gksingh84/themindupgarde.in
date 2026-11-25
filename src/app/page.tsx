@@ -7,7 +7,7 @@ import {
 } from '@/lib/blog-service';
 import { HomeClientView } from '@/components/HomeClientView';
 
-export const revalidate = 60; // ISR revalidate every 60 seconds
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const allBlogs = await getBlogsServerAsync();
