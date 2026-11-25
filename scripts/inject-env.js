@@ -21,6 +21,8 @@ const envKeys = [
   'AWS_DEFAULT_REGION',
   'DATABASE_URL',
   'ADMIN_PASSWORD',
+  'APP_ADMIN_PASSWORD',
+  'NEXT_PUBLIC_ADMIN_PASSWORD',
 ];
 
 const envLines = [];
@@ -29,6 +31,14 @@ for (const key of envKeys) {
   if (val && typeof val === 'string' && val.trim() !== '') {
     envLines.push(`${key}=${val.trim()}`);
   }
+}
+
+// Ensure ADMIN_PASSWORD and NEXT_PUBLIC_ADMIN_PASSWORD always default to adminpassword@7531 if not provided
+if (!envLines.some((l) => l.startsWith('ADMIN_PASSWORD='))) {
+  envLines.push(`ADMIN_PASSWORD=${process.env.ADMIN_PASSWORD || 'adminpassword@7531'}`);
+}
+if (!envLines.some((l) => l.startsWith('NEXT_PUBLIC_ADMIN_PASSWORD='))) {
+  envLines.push(`NEXT_PUBLIC_ADMIN_PASSWORD=${process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'adminpassword@7531'}`);
 }
 
 // Also capture any other key starting with APP_AWS_, DYNAMO, or TMU_

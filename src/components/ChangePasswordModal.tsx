@@ -214,7 +214,7 @@ export function ChangePasswordModal({
               </button>
             </div>
             <span className="text-[10px] text-charcoal-500 mt-1 block">
-              Default password on initial install is <code>admin123</code>
+              Default password is <code>adminpassword@7531</code>
             </span>
           </div>
 

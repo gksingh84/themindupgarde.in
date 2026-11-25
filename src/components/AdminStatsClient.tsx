@@ -77,11 +77,20 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const entered = password.trim();
+    if (entered === 'adminpassword@7531') {
+      ClientStorage.setCustomAdminPassword('adminpassword@7531');
+      ClientStorage.setAdminAuthenticated(true);
+      setIsAuthenticated(true);
+      showToast('Welcome back, Admin!', 'success');
+      return;
+    }
+
     try {
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password: entered }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -92,7 +101,7 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
       }
     } catch {}
 
-    if (ClientStorage.validateAdminPassword(password)) {
+    if (ClientStorage.validateAdminPassword(entered)) {
       ClientStorage.setAdminAuthenticated(true);
       setIsAuthenticated(true);
       showToast('Welcome back, Admin!', 'success');
@@ -195,7 +204,7 @@ export function AdminStatsClient({ initialBlogs }: AdminStatsClientProps) {
           </form>
 
           <p className="text-[11px] text-slate-500 text-center">
-            Default password on initial install is <code className="text-indigo-600 dark:text-indigo-400 font-mono">admin123</code>
+            Admin portal password is <code className="text-indigo-600 dark:text-indigo-400 font-mono">adminpassword@7531</code>
           </p>
         </div>
       </div>

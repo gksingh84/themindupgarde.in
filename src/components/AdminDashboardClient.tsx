@@ -160,49 +160,58 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const customPass = ClientStorage.getCustomAdminPassword();
+    const entered = password.trim();
 
-    // 1. If a custom password is set in this browser, strictly enforce it!
-    if (customPass) {
-      if (password === customPass) {
-        ClientStorage.setAdminAuthenticated(true);
-        setIsAuthenticated(true);
-        showToast('Welcome back to The Mind Upgrade Editorial CMS!', 'success');
-        // Keep server synchronized
-        fetch('/api/admin/auth', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ direct: true, newPassword: customPass }),
-        }).catch(() => {});
-        return;
-      } else {
-        // Any incorrect password (including default 'admin123') is strictly rejected
-        showToast('Incorrect password. The default password has been disabled.', 'error');
-        return;
-      }
+    // 1. Direct match with configured admin password
+    if (entered === 'adminpassword@7531') {
+      ClientStorage.setCustomAdminPassword('adminpassword@7531');
+      ClientStorage.setAdminAuthenticated(true);
+      setIsAuthenticated(true);
+      showToast('Welcome to The Mind Upgrade Editorial CMS!', 'success');
+      // Keep server synchronized
+      fetch('/api/admin/auth', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direct: true, newPassword: 'adminpassword@7531' }),
+      }).catch(() => {});
+      return;
     }
 
-    // 2. If no custom password in browser, query server
+    // 2. Custom password saved in this browser
+    const customPass = ClientStorage.getCustomAdminPassword();
+    if (customPass && entered === customPass) {
+      ClientStorage.setAdminAuthenticated(true);
+      setIsAuthenticated(true);
+      showToast('Welcome back to The Mind Upgrade Editorial CMS!', 'success');
+      fetch('/api/admin/auth', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direct: true, newPassword: customPass }),
+      }).catch(() => {});
+      return;
+    }
+
+    // 3. Query server API
     try {
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password: entered }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         ClientStorage.setAdminAuthenticated(true);
         setIsAuthenticated(true);
-        showToast('Welcome back to The Mind Upgrade Editorial CMS!', 'success');
+        showToast('Welcome to The Mind Upgrade Editorial CMS!', 'success');
         return;
       }
     } catch {}
 
-    // 3. Fallback client validation when server is unreachable
-    if (ClientStorage.validateAdminPassword(password)) {
+    // 4. Fallback client validation when server is unreachable
+    if (ClientStorage.validateAdminPassword(entered)) {
       ClientStorage.setAdminAuthenticated(true);
       setIsAuthenticated(true);
-      showToast('Welcome back to The Mind Upgrade Editorial CMS!', 'success');
+      showToast('Welcome to The Mind Upgrade Editorial CMS!', 'success');
     } else {
       showToast('Incorrect password. Please enter the current admin password.', 'error');
     }
@@ -447,7 +456,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
               />
               <span className="text-[10px] text-charcoal-500 mt-1 block">
                 {isDefaultPassword ? (
-                  <>Default password on first login: <code>admin123</code></>
+                  <>Default password: <code>adminpassword@7531</code></>
                 ) : (
                   <>Enter your custom administrator password</>
                 )}
@@ -538,7 +547,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
             <div>
               <span className="font-bold text-navy-800 dark:text-offwhite block">Default Admin Password In Use</span>
               <span className="text-charcoal-600 dark:text-slate-400 text-[11px]">
-                Your editorial portal is currently using the default password (<code>admin123</code>). Change your password now to protect your publication.
+                Your editorial portal is currently using the default password. You can customize your password anytime.
               </span>
             </div>
           </div>
@@ -1204,7 +1213,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${isDefaultPassword ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
                   <span className="font-bold text-sm text-navy-800 dark:text-offwhite">
-                    {isDefaultPassword ? 'Default Password (admin123)' : 'Custom Secure Password Active'}
+                    {isDefaultPassword ? 'Default Password Active' : 'Custom Secure Password Active'}
                   </span>
                 </div>
                 <span className="text-[11px] text-charcoal-500 block pt-1">
