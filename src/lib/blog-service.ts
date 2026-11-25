@@ -394,12 +394,12 @@ export function searchArticles(query: string): BlogPost[] {
   const blogs = getBlogsServer().filter((b) => b.status === 'published');
 
   return blogs.filter((b) => {
-    const titleMatch = b.title.toLowerCase().includes(q);
-    const excerptMatch = b.excerpt.toLowerCase().includes(q);
-    const categoryMatch = b.category.toLowerCase().includes(q);
-    const subcategoryMatch = b.subcategory?.toLowerCase().includes(q);
-    const tagMatch = b.tags?.some((t) => t.toLowerCase().includes(q));
-    const contentMatch = b.content.toLowerCase().includes(q);
+    const titleMatch = (b.title || '').toLowerCase().includes(q);
+    const excerptMatch = (b.excerpt || '').toLowerCase().includes(q);
+    const categoryMatch = (b.category || '').toLowerCase().includes(q);
+    const subcategoryMatch = (b.subcategory || '').toLowerCase().includes(q);
+    const tagMatch = Array.isArray(b.tags) && b.tags.some((t) => typeof t === 'string' && t.toLowerCase().includes(q));
+    const contentMatch = (b.content || '').toLowerCase().includes(q);
     return titleMatch || excerptMatch || categoryMatch || subcategoryMatch || tagMatch || contentMatch;
   });
 }

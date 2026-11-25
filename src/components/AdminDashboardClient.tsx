@@ -430,36 +430,54 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
   };
 
   // Filtered Articles
-  const filteredBlogs = blogs.filter((b) => {
-    const matchesSearch =
-      b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.author.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (b.subcategory && b.subcategory.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (b.tags && b.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
+  const filteredBlogs = (blogs || []).filter((b) => {
+    if (!b) return false;
+    const q = (searchQuery || '').trim().toLowerCase();
+    const title = (b.title || '').toLowerCase();
+    const authorName = (b.author?.name || '').toLowerCase();
+    const category = (b.category || '').toLowerCase();
+    const subcategory = (b.subcategory || '').toLowerCase();
+
+    const matchesSearch = !q
+      ? true
+      : title.includes(q) ||
+        authorName.includes(q) ||
+        category.includes(q) ||
+        subcategory.includes(q) ||
+        (Array.isArray(b.tags) && b.tags.some((t) => typeof t === 'string' && t.toLowerCase().includes(q)));
+
     const matchesStatus =
       statusFilter === 'all' ? true : b.status === statusFilter;
+
+    const catFilterNorm = (categoryFilter || '').trim().toLowerCase();
+    const catFilterSlug = catFilterNorm.replace(/[\s_]+/g, '-');
+    const bCatNorm = (b.category || '').trim().toLowerCase();
+    const bCatSlug = bCatNorm.replace(/[\s_]+/g, '-');
+
     const matchesCategory =
       categoryFilter === 'all'
         ? true
-        : b.category.trim().toLowerCase() === categoryFilter.trim().toLowerCase() ||
-          b.category.toLowerCase().replace(/[\s_]+/g, '-') === categoryFilter.toLowerCase().replace(/[\s_]+/g, '-');
+        : bCatNorm === catFilterNorm || bCatSlug === catFilterSlug;
+
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
   // Filtered Subscribers
-  const filteredSubscribers = subscribers.filter(
-    (s) =>
-      s.email.toLowerCase().includes(subscriberSearch.toLowerCase()) ||
-      (s.name && s.name.toLowerCase().includes(subscriberSearch.toLowerCase()))
-  );
+  const filteredSubscribers = (subscribers || []).filter((s) => {
+    if (!s) return false;
+    const subQuery = (subscriberSearch || '').trim().toLowerCase();
+    if (!subQuery) return true;
+    const email = (s.email || '').toLowerCase();
+    const name = (s.name || '').toLowerCase();
+    return email.includes(subQuery) || name.includes(subQuery);
+  });
 
   // Calculations for executive dashboard
-  const publishedCount = blogs.filter((b) => b.status === 'published').length;
-  const draftCount = blogs.filter((b) => b.status === 'draft').length;
-  const scheduledCount = blogs.filter((b) => b.status === 'scheduled').length;
-  const totalViews = blogs.reduce((acc, curr) => acc + (curr.views || 0), 0);
-  const totalLikes = blogs.reduce((acc, curr) => acc + (curr.likes || 0), 0);
+  const publishedCount = (blogs || []).filter((b) => b && b.status === 'published').length;
+  const draftCount = (blogs || []).filter((b) => b && b.status === 'draft').length;
+  const scheduledCount = (blogs || []).filter((b) => b && b.status === 'scheduled').length;
+  const totalViews = (blogs || []).reduce((acc, curr) => acc + (curr?.views || 0), 0);
+  const totalLikes = (blogs || []).reduce((acc, curr) => acc + (curr?.likes || 0), 0);
 
   // Authentication View
   if (!isAuthenticated) {
@@ -1030,8 +1048,8 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       {activeTab === 'categories' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {CATEGORIES.map((cat) => {
-            const count = blogs.filter(
-              (b) => b.category.toLowerCase() === cat.name.toLowerCase()
+            const count = (blogs || []).filter(
+              (b) => ((b && b.category) || '').trim().toLowerCase() === cat.name.trim().toLowerCase()
             ).length;
             return (
               <div
