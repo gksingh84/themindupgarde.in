@@ -129,19 +129,19 @@ export default function AboutPage() {
       </section>
 
       {/* CTA Box */}
-      <section className="p-8 sm:p-12 rounded-3xl bg-navy-800 text-offwhite border border-navy-700 text-center space-y-4">
-        <h2 className="font-serif text-2xl sm:text-3xl font-black">
+      <section className="p-6 sm:p-8 md:p-10 rounded-3xl bg-white dark:bg-navy-900 text-navy-900 dark:text-offwhite border border-slate-300 dark:border-navy-600 shadow-editorial text-center space-y-4">
+        <h2 className="font-serif text-2xl sm:text-3xl font-black text-navy-900 dark:text-offwhite">
           Join Thoughtful Thinkers Across the Globe
         </h2>
-        <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
+        <p className="text-xs sm:text-sm text-charcoal-600 dark:text-slate-300 max-w-xl mx-auto leading-relaxed">
           Level up your personal sovereignty, understand the forces shaping your money and mind, and make better decisions every single day.
         </p>
         <div className="pt-2 flex justify-center gap-3">
           <Link
             href="/"
-            className="px-6 py-2.5 rounded-xl bg-amberBrand hover:bg-amberBrand/90 text-navy-950 font-bold text-xs shadow-md transition-all"
+            className="px-6 py-2.5 rounded-xl bg-amberBrand hover:bg-amberBrand/90 text-navy-950 font-bold text-xs shadow-md transition-all inline-flex items-center gap-1.5"
           >
-            Explore Publications &rarr;
+            <span>Explore Publications &rarr;</span>
           </Link>
         </div>
       </section>
