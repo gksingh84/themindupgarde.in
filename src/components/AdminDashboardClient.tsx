@@ -39,7 +39,8 @@ import {
   AlertCircle,
   CloudUpload,
   Database,
-  Cloud
+  Cloud,
+  Star
 } from 'lucide-react';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { DynamoDBSetupModal } from '@/components/DynamoDBSetupModal';
@@ -305,6 +306,35 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
         method: 'PUT',
         headers: reqHeaders,
         body: JSON.stringify({ status: newStatus }),
+      });
+    } catch {}
+  };
+
+  // Toggle Featured Story status (ensures only 1 featured story exists at a time)
+  const toggleFeatured = async (blog: BlogPost) => {
+    const newFeatured = !blog.featured;
+    setBlogs((prev) =>
+      prev.map((b) => ({
+        ...b,
+        featured: b.id === blog.id ? newFeatured : (newFeatured ? false : b.featured),
+      }))
+    );
+    showToast(
+      newFeatured ? `Set "${blog.title}" as Featured Story (Hero)!` : `Removed from Featured Story`,
+      'success'
+    );
+    try {
+      const storedCreds = ClientStorage.getDynamoCreds();
+      const reqHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (storedCreds) {
+        reqHeaders['x-dynamo-creds'] = JSON.stringify(storedCreds);
+      }
+      await fetch(`/api/blogs/${encodeURIComponent(blog.id)}`, {
+        method: 'PUT',
+        headers: reqHeaders,
+        body: JSON.stringify({ featured: newFeatured }),
       });
     } catch {}
   };
@@ -928,13 +958,21 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                               <img src={blog.coverImage} alt={blog.title} className="w-full h-full object-cover" />
                             </div>
                             <div className="space-y-0.5 max-w-sm">
-                              <Link
-                                href={`/blog/${blog.slug}`}
-                                target="_blank"
-                                className="font-serif font-bold text-sm text-navy-800 dark:text-offwhite hover:text-amberBrand line-clamp-1"
-                              >
-                                {blog.title}
-                              </Link>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <Link
+                                  href={`/blog/${blog.slug}`}
+                                  target="_blank"
+                                  className="font-serif font-bold text-sm text-navy-800 dark:text-offwhite hover:text-amberBrand line-clamp-1"
+                                >
+                                  {blog.title}
+                                </Link>
+                                {blog.featured && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amberBrand/15 text-amber-700 dark:text-amberBrand border border-amberBrand/30 shrink-0">
+                                    <Sparkles className="w-2.5 h-2.5" />
+                                    Featured Story
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-[11px] text-charcoal-500 block truncate">
                                 By {blog.author.name}
                               </span>
@@ -975,6 +1013,17 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => toggleFeatured(blog)}
+                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                blog.featured
+                                  ? 'text-amberBrand hover:text-amber-600 bg-amberBrand/10'
+                                  : 'text-charcoal-400 hover:text-amberBrand'
+                              }`}
+                              title={blog.featured ? 'Featured Story (Hero) - Click to remove from Hero' : 'Set as Featured Story (Hero Banner)'}
+                            >
+                              <Star className={`w-3.5 h-3.5 ${blog.featured ? 'fill-current' : ''}`} />
+                            </button>
                             <Link
                               href={`/blog/${blog.slug}`}
                               target="_blank"

@@ -405,6 +405,45 @@ export async function deleteBlogFromDynamoDB(id: string): Promise<boolean> {
 }
 
 /**
+ * Ensure only one blog is featured in AWS DynamoDB: unfeatures all other blogs except the specified ID.
+ */
+export async function unfeatureOtherBlogsInDynamoDB(exceptId: string): Promise<number> {
+  if (!isDynamoDBConfigured()) return 0;
+  try {
+    const client = getDynamoDBClient();
+    const tableName = getDynamoTableName();
+    const allBlogs = await getAllBlogsFromDynamoDB();
+    if (!allBlogs || allBlogs.length === 0) return 0;
+
+    let unfeaturedCount = 0;
+    for (const b of allBlogs) {
+      if (b.id !== exceptId && b.featured) {
+        try {
+          await client.send(
+            new UpdateCommand({
+              TableName: tableName,
+              Key: { id: b.id },
+              UpdateExpression: 'SET featured = :f, updatedAt = :now',
+              ExpressionAttributeValues: {
+                ':f': false,
+                ':now': new Date().toISOString(),
+              },
+            })
+          );
+          unfeaturedCount++;
+        } catch (err) {
+          console.warn(`Failed to unfeature blog ${b.id} in DynamoDB:`, err);
+        }
+      }
+    }
+    return unfeaturedCount;
+  } catch (err) {
+    console.warn('Error in unfeatureOtherBlogsInDynamoDB:', err);
+    return 0;
+  }
+}
+
+/**
  * Put each blog individually into AWS DynamoDB with detailed error diagnostics.
  */
 export async function saveBlogsToDynamoDBDetailed(

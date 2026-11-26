@@ -13,9 +13,8 @@ export default async function HomePage() {
   const allBlogs = await getBlogsServerAsync();
   const publishedBlogs = allBlogs.filter((b) => b.status === 'published');
 
-  // Featured post: specifically selected or first featured or latest
-  const featuredPosts = getFeaturedArticles(4);
-  const featuredPost = featuredPosts[0] || publishedBlogs[0];
+  // Featured post: specifically selected featured story or latest published article
+  const featuredPost = publishedBlogs.find((b) => b.featured) || publishedBlogs[0];
   const editorsPicks = getEditorsPicks(4);
   const popularPosts = getPopularBlogs(5);
 

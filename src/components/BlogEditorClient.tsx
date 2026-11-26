@@ -583,7 +583,9 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
                     onChange={(e) => setFeatured(e.target.checked)}
                     className="rounded border-navy-700 text-amberBrand"
                   />
-                  <span className="font-medium text-navy-800 dark:text-offwhite">Featured Article</span>
+                  <span className="font-medium text-navy-800 dark:text-offwhite">
+                    Featured Story (Hero Banner)
+                  </span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer text-xs">
                   <input

@@ -17,6 +17,7 @@ import {
   decrementBlogLikesInDynamoDB,
   resetAllStatsInDynamoDB,
   isBlogItem,
+  unfeatureOtherBlogsInDynamoDB,
 } from '@/lib/dynamodb';
 
 const DATA_FILE = path.join(process.cwd(), 'src/data/blogs.json');
@@ -180,7 +181,18 @@ export function saveBlogsServer(blogs: BlogPost[]): boolean {
  * Saves or updates a single blog post across DynamoDB, in-memory cache, and fallback files.
  */
 export async function saveBlogServerAsync(blog: BlogPost): Promise<boolean> {
-  // 1. Save to DynamoDB if configured
+  const isNowFeatured = Boolean(blog.featured);
+
+  // 1. If this blog is marked as featured, unfeature all other blogs in DynamoDB
+  if (isNowFeatured && isDynamoDBConfigured()) {
+    try {
+      await unfeatureOtherBlogsInDynamoDB(blog.id);
+    } catch (e) {
+      console.warn('DynamoDB unfeature warning:', e);
+    }
+  }
+
+  // 2. Save to DynamoDB if configured
   if (isDynamoDBConfigured()) {
     try {
       await saveBlogToDynamoDB(blog);
@@ -189,9 +201,19 @@ export async function saveBlogServerAsync(blog: BlogPost): Promise<boolean> {
     }
   }
 
-  // 2. Update memory cache and local state
+  // 3. Update memory cache and local state
   const current = cachedBlogs && cachedBlogs.length > 0 ? [...cachedBlogs] : getBlogsServer();
   const index = current.findIndex((b) => b.id === blog.id || b.slug === blog.slug);
+
+  if (isNowFeatured) {
+    // Unfeature every other blog in memory and local storage
+    for (let i = 0; i < current.length; i++) {
+      if (current[i].id !== blog.id && current[i].slug !== blog.slug) {
+        current[i] = { ...current[i], featured: false };
+      }
+    }
+  }
+
   if (index > -1) {
     current[index] = { ...current[index], ...blog };
   } else {

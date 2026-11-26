@@ -53,7 +53,7 @@ export function HomeClientView({
   useEffect(() => {
     const merged = ClientStorage.getMergedBlogs(initialBlogs);
     setBlogs(merged);
-    const updatedHero = merged.find((b) => b.id === featuredPost?.id || b.slug === featuredPost?.slug) || merged[0] || null;
+    const updatedHero = merged.find((b) => b.featured) || merged.find((b) => b.id === featuredPost?.id || b.slug === featuredPost?.slug) || merged[0] || null;
     setHeroPost(updatedHero);
 
     // Fetch fresh articles from DynamoDB cloud database
@@ -64,6 +64,7 @@ export function HomeClientView({
           const freshMerged = ClientStorage.getMergedBlogs(cloudBlogs);
           setBlogs(freshMerged);
           const freshHero =
+            freshMerged.find((b) => b.featured) ||
             freshMerged.find((b) => b.id === featuredPost?.id || b.slug === featuredPost?.slug) ||
             freshMerged[0] ||
             null;
