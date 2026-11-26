@@ -85,8 +85,8 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
             alt={post.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
           />
-          <div className="absolute top-4 left-4">
-            <span className="bg-amberBrand text-navy-950 text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md flex items-center gap-1.5">
+          <div className="absolute bottom-4 left-4 z-10">
+            <span className="bg-amberBrand text-navy-950 text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 backdrop-blur-xs">
               <Sparkles className="w-3.5 h-3.5" />
               Featured Story
             </span>
