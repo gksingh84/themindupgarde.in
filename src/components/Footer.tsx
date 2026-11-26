@@ -57,37 +57,37 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-[#14243A] text-slate-300 border-t border-navy-700/60 pt-12 pb-8 relative overflow-hidden transition-colors">
+    <footer className="bg-[#14243A] text-slate-300 border-t border-navy-700/60 pt-7 pb-4 sm:pt-8 sm:pb-5 relative overflow-hidden transition-colors">
       
       {/* Subtle Warm Amber Background Ambient Glow */}
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-amberBrand/5 blur-[120px] pointer-events-none rounded-full" />
 
-      <div className="container-custom relative z-10 space-y-10">
+      <div className="container-custom relative z-10 space-y-5">
         
         {/* Main 4-Column Editorial Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-10 pb-10 border-b border-navy-700/60">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 lg:gap-8 pb-5 border-b border-navy-700/60">
           
           {/* Column 1 & 2: Brand Identity */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-3">
             <Link href="/" className="inline-flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-amberBrand shadow-md shadow-amberBrand/20 shrink-0 flex items-center justify-center bg-amberBrand group-hover:scale-105 transition-transform duration-300">
+              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-amberBrand shadow-md shadow-amberBrand/20 shrink-0 flex items-center justify-center bg-amberBrand group-hover:scale-105 transition-transform duration-300">
                 <img src="/logo.png" alt="The Mind Upgrade Emblem" className="w-full h-full object-cover scale-[1.12]" />
               </div>
               <div className="flex flex-col">
-                <span className="font-serif font-black text-lg tracking-tight text-white group-hover:text-amberBrand transition-colors">
+                <span className="font-serif font-black text-base sm:text-lg tracking-tight text-white group-hover:text-amberBrand transition-colors">
                   THE MIND UPGRADE
                 </span>
-                <span className="font-sans font-bold text-[9px] tracking-widest text-slate-400 uppercase">
+                <span className="font-sans font-bold text-[8.5px] tracking-widest text-slate-400 uppercase">
                   FRESH INSIGHTS FOR A SMARTER LIFE
                 </span>
               </div>
             </Link>
 
-            <p className="text-xs sm:text-sm text-slate-300 max-w-md leading-relaxed">
+            <p className="text-xs sm:text-[13px] text-slate-300 max-w-md leading-relaxed">
               An independent digital publication dedicated to helping thoughtful readers master money, psychology, modern economics, and practical life knowledge.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-3 pt-0.5">
               <div className="flex items-center gap-1.5 text-xs text-amberBrand bg-amberBrand/10 border border-amberBrand/20 px-3 py-1 rounded-full">
                 <Globe className="w-3.5 h-3.5" />
                 <span className="font-mono">themindupgrade.in</span>
@@ -102,11 +102,11 @@ export function Footer() {
           </div>
 
           {/* Column 3: Navigation Links */}
-          <div className="space-y-3">
-            <h4 className="font-serif text-sm font-bold text-white tracking-wide uppercase">
+          <div className="space-y-2.5">
+            <h4 className="font-serif text-xs sm:text-sm font-bold text-white tracking-wide uppercase">
               Publication
             </h4>
-            <ul className="space-y-2 text-xs sm:text-sm">
+            <ul className="space-y-1.5 text-xs sm:text-[13px]">
               <li>
                 <Link href="/" className="hover:text-amberBrand transition-colors">
                   Home Page
@@ -142,11 +142,11 @@ export function Footer() {
           </div>
 
           {/* Column 4: Content Categories */}
-          <div className="space-y-3">
-            <h4 className="font-serif text-sm font-bold text-white tracking-wide uppercase">
+          <div className="space-y-2.5">
+            <h4 className="font-serif text-xs sm:text-sm font-bold text-white tracking-wide uppercase">
               Knowledge Domains
             </h4>
-            <ul className="space-y-2 text-xs sm:text-sm">
+            <ul className="space-y-1.5 text-xs sm:text-[13px]">
               {CATEGORIES.map((cat) => (
                 <li key={cat.slug}>
                   <Link
@@ -162,20 +162,20 @@ export function Footer() {
           </div>
 
           {/* Column 5: Newsletter Subscription */}
-          <div className="space-y-3">
-            <h4 className="font-serif text-sm font-bold text-white tracking-wide uppercase">
+          <div className="space-y-2.5">
+            <h4 className="font-serif text-xs sm:text-sm font-bold text-white tracking-wide uppercase">
               Newsletter
             </h4>
             <p className="text-xs text-slate-300 leading-relaxed">
               Get thoughtful articles and fresh perspectives delivered directly to your inbox.
             </p>
-            <form onSubmit={handleNewsletterSubmit} className="space-y-2 pt-1">
+            <form onSubmit={handleNewsletterSubmit} className="space-y-2 pt-0.5">
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your Name (Optional)"
-                className="w-full bg-navy-950/80 border border-navy-700 text-white placeholder-slate-500 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-amberBrand transition-colors"
+                className="w-full bg-navy-950/80 border border-navy-700 text-white placeholder-slate-500 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-amberBrand transition-colors"
               />
               <div className="relative">
                 <input
@@ -184,7 +184,7 @@ export function Footer() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@domain.com"
                   required
-                  className="w-full bg-navy-950/80 border border-navy-700 text-white placeholder-slate-500 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-amberBrand transition-colors pr-10"
+                  className="w-full bg-navy-950/80 border border-navy-700 text-white placeholder-slate-500 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-amberBrand transition-colors pr-10"
                 />
                 <button
                   type="submit"
@@ -195,7 +195,7 @@ export function Footer() {
                   <Send className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <label className="flex items-start gap-2 pt-1 cursor-pointer">
+              <label className="flex items-start gap-2 pt-0.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={agreed}
@@ -213,8 +213,8 @@ export function Footer() {
         </div>
 
         {/* Legal & Editorial Policy Links */}
-        <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-slate-400 pt-2">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
             <Link href="/privacy-policy" className="hover:text-white transition-colors">
               Privacy Policy
             </Link>
@@ -236,7 +236,7 @@ export function Footer() {
           </div>
 
           {/* Social Icons */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <a 
               href="https://twitter.com" 
               target="_blank" 
@@ -268,7 +268,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Copyright */}
-        <div className="pt-4 border-t border-navy-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+        <div className="pt-2.5 border-t border-navy-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
           <p suppressHydrationWarning>
             © {new Date().getFullYear()} THE MIND UPGRADE (themindupgrade.in). All rights reserved.
           </p>

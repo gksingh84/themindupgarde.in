@@ -484,17 +484,17 @@ export function HomeClientView({
           4.I: NEWSLETTER SUBSCRIPTION SECTION
           ======================================================== */}
       <section id="newsletter-section" className="container-custom">
-        <div className="relative rounded-3xl overflow-hidden bg-white dark:bg-navy-900 text-navy-900 dark:text-offwhite border border-slate-200 dark:border-navy-700 p-8 sm:p-12 shadow-editorial">
+        <div className="relative rounded-3xl overflow-hidden bg-white dark:bg-navy-900 text-navy-900 dark:text-offwhite border border-slate-200 dark:border-navy-700 p-6 sm:p-8 md:p-10 shadow-editorial">
           {/* Warm Amber Accent Glow */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-amberBrand/10 blur-[100px] pointer-events-none rounded-full" />
           <div className="absolute bottom-0 left-0 w-60 h-60 bg-slateBrand/10 blur-[90px] pointer-events-none rounded-full" />
 
-          <div className="relative z-10 max-w-2xl mx-auto text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-amberBrand text-navy-950 flex items-center justify-center mx-auto shadow-md shadow-amberBrand/30">
-              <Sparkles className="w-6 h-6" />
+          <div className="relative z-10 max-w-2xl mx-auto text-center space-y-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-amberBrand text-navy-950 flex items-center justify-center mx-auto shadow-md shadow-amberBrand/30">
+              <Sparkles className="w-5 h-5" />
             </div>
 
-            <h2 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-tight text-navy-900 dark:text-offwhite">
+            <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-navy-900 dark:text-offwhite">
               Upgrade Your Mind. One Insight at a Time.
             </h2>
 
@@ -502,7 +502,7 @@ export function HomeClientView({
               Get thoughtful articles, practical knowledge and fresh perspectives delivered directly to your inbox.
             </p>
 
-            <form onSubmit={handleNewsletter} className="space-y-3 pt-3 max-w-md mx-auto">
+            <form onSubmit={handleNewsletter} className="space-y-2.5 pt-2 max-w-md mx-auto">
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
