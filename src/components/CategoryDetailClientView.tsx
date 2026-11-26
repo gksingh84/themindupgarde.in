@@ -177,7 +177,7 @@ function CategoryDetailContent({
       </div>
 
       {/* Category Hero Banner */}
-      <div className="px-5 py-4 sm:px-8 sm:py-5 rounded-3xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-editorial space-y-3.5 relative overflow-hidden">
+      <div className="px-5 pt-4 pb-5 sm:px-8 sm:pt-5 sm:pb-6 rounded-3xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-editorial space-y-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-amberBrand/5 blur-[100px] pointer-events-none rounded-full" />
 
         <div className="space-y-1.5 sm:space-y-2 relative z-10 max-w-3xl">
@@ -201,8 +201,8 @@ function CategoryDetailContent({
         </div>
 
         {/* Subcategories Filter Pills */}
-        <div className="pt-2.5 border-t border-slate-100 dark:border-navy-800 space-y-1.5 relative z-10">
-          <div className="flex items-center justify-between text-xs font-bold text-slateBrand dark:text-slate-400">
+        <div className="pt-3 border-t border-slate-100 dark:border-navy-800 relative z-10">
+          <div className="flex items-center justify-between text-xs font-bold text-slateBrand dark:text-slate-400 mb-2.5">
             <span className="flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5 text-amberBrand" />
               <span>Filter by Subtopic:</span>
@@ -217,7 +217,7 @@ function CategoryDetailContent({
             )}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
+          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar-h pt-1 pb-2.5">
             <Link
               href={`/categories/${category.slug}`}
               onClick={() => setActiveSub('')}

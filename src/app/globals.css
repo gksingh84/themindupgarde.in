@@ -570,3 +570,35 @@ hr {
 .animate-slide-down {
   animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Custom smooth horizontal scrollbar for subtopic pill scroller */
+.custom-scrollbar-h::-webkit-scrollbar {
+  height: 6px;
+}
+.custom-scrollbar-h::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.5);
+  border-radius: 9999px;
+}
+.custom-scrollbar-h::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.custom-scrollbar-h::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.dark .custom-scrollbar-h::-webkit-scrollbar-track {
+  background: rgba(14, 23, 36, 0.6);
+}
+.dark .custom-scrollbar-h::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+.dark .custom-scrollbar-h::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+.custom-scrollbar-h {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.dark .custom-scrollbar-h {
+  scrollbar-color: #334155 transparent;
+}
