@@ -89,7 +89,13 @@ export function setDynamoRuntimeConfig(config: {
 export function applyDynamoCredsHeader(headerValue?: string | null) {
   if (!headerValue) return;
   try {
-    const parsed = typeof headerValue === 'string' ? JSON.parse(headerValue) : headerValue;
+    let raw = headerValue;
+    if (typeof raw === 'string' && (raw.startsWith('%') || raw.includes('%22') || raw.includes('%7B'))) {
+      try {
+        raw = decodeURIComponent(raw);
+      } catch {}
+    }
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (parsed && (parsed.accessKeyId || parsed.secretAccessKey)) {
       setDynamoRuntimeConfig(parsed);
     }
@@ -199,16 +205,23 @@ export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[] | null> {
 
   try {
     const client = getDynamoDBClient();
-    const command = new ScanCommand({
-      TableName: getDynamoTableName(),
-    });
-    const response = await client.send(command);
+    const allItems: any[] = [];
+    let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
-    if (!response.Items) {
-      return [];
-    }
+    do {
+      const command: ScanCommand = new ScanCommand({
+        TableName: getDynamoTableName(),
+        ExclusiveStartKey: lastEvaluatedKey,
+      });
+      const response = await client.send(command);
 
-    return (response.Items as BlogPost[])
+      if (response.Items) {
+        allItems.push(...response.Items);
+      }
+      lastEvaluatedKey = response.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return (allItems as BlogPost[])
       .filter((b) => b && b.id && !String(b.id).startsWith('__'))
       .map((b) => ({
         ...b,
@@ -253,22 +266,27 @@ export async function getBlogByIdOrSlugFromDynamoDB(
       Key: { id: idOrSlug },
     });
     const getRes = await client.send(getCommand);
-    if (getRes.Item) {
+    if (getRes.Item && !String(getRes.Item.id).startsWith('__')) {
       return getRes.Item as BlogPost;
     }
 
-    // 2. Scan by slug or alias if not matching ID
-    const scanCommand = new ScanCommand({
-      TableName: getDynamoTableName(),
-      FilterExpression: 'slug = :s OR id = :s',
-      ExpressionAttributeValues: {
-        ':s': idOrSlug,
-      },
-    });
-    const scanRes = await client.send(scanCommand);
-    if (scanRes.Items && scanRes.Items.length > 0) {
-      return scanRes.Items[0] as BlogPost;
-    }
+    // 2. Scan by slug or alias if not matching ID (with pagination)
+    let lastEvaluatedKey: Record<string, any> | undefined = undefined;
+    do {
+      const scanCommand: ScanCommand = new ScanCommand({
+        TableName: getDynamoTableName(),
+        FilterExpression: 'slug = :s OR id = :s',
+        ExpressionAttributeValues: {
+          ':s': idOrSlug,
+        },
+        ExclusiveStartKey: lastEvaluatedKey,
+      });
+      const scanRes = await client.send(scanCommand);
+      if (scanRes.Items && scanRes.Items.length > 0) {
+        return scanRes.Items[0] as BlogPost;
+      }
+      lastEvaluatedKey = scanRes.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
 
     return null;
   } catch (error) {
@@ -504,21 +522,31 @@ export async function getAllSubscribersFromDynamoDB(): Promise<Subscriber[] | nu
   if (!isDynamoDBConfigured()) return null;
   try {
     const client = getDynamoDBClient();
-    const command = new ScanCommand({
-      TableName: getDynamoTableName(),
-      FilterExpression: '#type = :sub OR begins_with(#id, :prefix)',
-      ExpressionAttributeNames: {
-        '#type': 'type',
-        '#id': 'id',
-      },
-      ExpressionAttributeValues: {
-        ':sub': 'subscriber',
-        ':prefix': 'subscriber#',
-      },
-    });
-    const res = await client.send(command);
-    if (!res.Items) return [];
-    return (res.Items as any[])
+    const allItems: any[] = [];
+    let lastEvaluatedKey: Record<string, any> | undefined = undefined;
+
+    do {
+      const command: ScanCommand = new ScanCommand({
+        TableName: getDynamoTableName(),
+        FilterExpression: '#type = :sub OR begins_with(#id, :prefix)',
+        ExpressionAttributeNames: {
+          '#type': 'type',
+          '#id': 'id',
+        },
+        ExpressionAttributeValues: {
+          ':sub': 'subscriber',
+          ':prefix': 'subscriber#',
+        },
+        ExclusiveStartKey: lastEvaluatedKey,
+      });
+      const res = await client.send(command);
+      if (res.Items) {
+        allItems.push(...res.Items);
+      }
+      lastEvaluatedKey = res.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return (allItems as any[])
       .filter((item) => item && item.email && !item.email.includes('example.com'))
       .map((item) => ({
         id: String(item.id),
@@ -731,14 +759,21 @@ export async function resetAllStatsInDynamoDB(force = false): Promise<boolean> {
     }
 
     console.log('[DynamoDB] Performing reset of all views and likes to 0...');
-    const scanRes = await client.send(
-      new ScanCommand({
-        TableName: getDynamoTableName(),
-      })
-    );
+    const allItems: any[] = [];
+    let lastEvaluatedKey: Record<string, any> | undefined = undefined;
+    do {
+      const scanRes: any = await client.send(
+        new ScanCommand({
+          TableName: getDynamoTableName(),
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      );
+      if (scanRes.Items) allItems.push(...scanRes.Items);
+      lastEvaluatedKey = scanRes.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
 
-    if (scanRes.Items && scanRes.Items.length > 0) {
-      const blogs = (scanRes.Items as BlogPost[]).filter(
+    if (allItems.length > 0) {
+      const blogs = (allItems as BlogPost[]).filter(
         (b) => b && b.id && !String(b.id).startsWith('__')
       );
       for (const b of blogs) {

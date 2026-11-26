@@ -352,21 +352,19 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
       const url = isEditing && targetId ? `/api/blogs/${targetId}` : '/api/blogs';
       const method = isEditing ? 'PUT' : 'POST';
 
+      const customCreds = ClientStorage.getDynamoCreds();
+      const reqHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (customCreds) {
+        reqHeaders['x-dynamo-creds'] = JSON.stringify(customCreds);
+      }
+
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: reqHeaders,
         body: JSON.stringify(postPayload),
       });
-
-      const data = await res.json().catch(() => null);
-
-      // Persist permanently in ClientStorage so edits survive AWS Amplify cold starts and page refreshes
-      const savedRecord: BlogPost = {
-        ...(initialPost || {}),
-        ...postPayload,
-        id: (data && data.id) || targetId || String(Date.now()),
-      } as BlogPost;
-      ClientStorage.saveBlog(savedRecord);
 
       if (res.ok) {
         setLastAutosave(new Date().toLocaleTimeString());
@@ -376,7 +374,13 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
         );
         router.push('/admin');
       } else {
-        // Fallback: Even if server returned error (e.g. read-only filesystem), local save succeeded
+        // Fallback: Even if server returned error (e.g. offline/read-only), preserve local draft
+        const savedRecord: BlogPost = {
+          ...(initialPost || {}),
+          ...postPayload,
+          id: targetId || String(Date.now()),
+        } as BlogPost;
+        ClientStorage.saveBlog(savedRecord);
         setLastAutosave(new Date().toLocaleTimeString());
         showToast('Article saved to your browser storage!', 'success');
         router.push('/admin');

@@ -170,71 +170,61 @@ export const ClientStorage = {
   getMergedBlogs(initialBlogs: BlogPost[] = []): BlogPost[] {
     if (typeof window === 'undefined') return initialBlogs;
 
-    // One-time stats reset migration in local browser
+    // One-time cleanup: remove any cached custom blogs that match initialBlogs to prevent stale status overwrites
     try {
-      if (localStorage.getItem('tmu_stats_reset_v2') !== 'true') {
-        localStorage.setItem('tmu_stats_reset_v2', 'true');
-        localStorage.removeItem(LIKES_KEY);
-        const custom = this.getCustomBlogs();
-        let modified = false;
-        for (const k in custom) {
-          if (custom[k]) {
-            custom[k].views = 0;
-            custom[k].likes = 0;
-            modified = true;
+      if (initialBlogs && initialBlogs.length > 0) {
+        const customMap = this.getCustomBlogs();
+        const initialKeys = new Set(initialBlogs.map((b) => b.id));
+        const initialSlugs = new Set(initialBlogs.map((b) => b.slug));
+        let changed = false;
+        for (const k in customMap) {
+          const blog = customMap[k];
+          if (blog && (initialKeys.has(blog.id) || initialSlugs.has(blog.slug))) {
+            delete customMap[k];
+            changed = true;
           }
         }
-        if (modified) {
-          localStorage.setItem(CUSTOM_BLOGS_KEY, JSON.stringify(custom));
+        if (changed) {
+          localStorage.setItem(CUSTOM_BLOGS_KEY, JSON.stringify(customMap));
         }
       }
     } catch {}
 
-    const deletedIds = this.getDeletedBlogIds();
     const customMap = this.getCustomBlogs();
+    const deletedIds = this.getDeletedBlogIds();
 
-    // 1. Filter out deleted blogs from initial list
-    let result = initialBlogs.filter(
-      (b) => !deletedIds.includes(b.id) && !deletedIds.includes(b.slug)
+    // When initialBlogs is provided from the server/DynamoDB, server data is authoritative!
+    if (initialBlogs && initialBlogs.length > 0) {
+      const initialKeys = new Set(initialBlogs.map((b) => b.id));
+      const initialSlugs = new Set(initialBlogs.map((b) => b.slug));
+
+      // Append any newly created blogs in offline/local storage that don't exist on server yet
+      const offlineOnly: BlogPost[] = [];
+      Object.values(customMap).forEach((customBlog) => {
+        if (
+          customBlog &&
+          customBlog.id &&
+          !initialKeys.has(customBlog.id) &&
+          !initialSlugs.has(customBlog.slug) &&
+          !deletedIds.includes(customBlog.id) &&
+          !deletedIds.includes(customBlog.slug)
+        ) {
+          offlineOnly.push(customBlog);
+        }
+      });
+
+      // Filter out deleted blogs
+      const filtered = initialBlogs.filter(
+        (b) => !deletedIds.includes(b.id) && !deletedIds.includes(b.slug)
+      );
+
+      return [...offlineOnly, ...filtered];
+    }
+
+    // Fallback when initialBlogs is empty
+    return Object.values(customMap).filter(
+      (b) => b && b.id && !deletedIds.includes(b.id) && !deletedIds.includes(b.slug)
     );
-
-    // 2. Replace any modified initial blogs with custom versions
-    result = result.map((b) => {
-      const key = b.id || b.slug;
-      if (customMap[key]) {
-        return {
-          ...customMap[key],
-          views: typeof b.views === 'number' ? b.views : (customMap[key].views || 0),
-          likes: typeof b.likes === 'number' ? b.likes : (customMap[key].likes || 0),
-        };
-      }
-      const match = Object.values(customMap).find((c) => c.id === b.id || c.slug === b.slug);
-      if (match) {
-        return {
-          ...match,
-          views: typeof b.views === 'number' ? b.views : (match.views || 0),
-          likes: typeof b.likes === 'number' ? b.likes : (match.likes || 0),
-        };
-      }
-      return b;
-    });
-
-    // 3. Append newly created blogs not in initial list
-    const initialKeys = new Set(initialBlogs.map((b) => b.id));
-    const initialSlugs = new Set(initialBlogs.map((b) => b.slug));
-
-    Object.values(customMap).forEach((customBlog) => {
-      if (
-        !initialKeys.has(customBlog.id) &&
-        !initialSlugs.has(customBlog.slug) &&
-        !deletedIds.includes(customBlog.id) &&
-        !deletedIds.includes(customBlog.slug)
-      ) {
-        result.unshift(customBlog);
-      }
-    });
-
-    return result;
   },
 
   // Export current publication state as JSON

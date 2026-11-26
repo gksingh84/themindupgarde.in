@@ -84,8 +84,28 @@ export async function POST(request: Request) {
       });
     }
 
-    // Base blogs from server
-    let blogsToSync: BlogPost[] = clientBlogs.length > 0 ? clientBlogs : getBlogsServer();
+    // Base blogs from server merged with any client changes so no articles are ever lost
+    const serverBlogs = getBlogsServer();
+    let blogsToSync: BlogPost[] = [];
+    if (clientBlogs && clientBlogs.length > 0) {
+      const clientMap = new Map<string, BlogPost>();
+      clientBlogs.forEach((b) => {
+        if (b.id) clientMap.set(b.id, b);
+        if (b.slug) clientMap.set(b.slug, b);
+      });
+      const mergedServer = serverBlogs.map((sb) => {
+        const match = clientMap.get(sb.id) || clientMap.get(sb.slug);
+        return match ? { ...sb, ...match } : sb;
+      });
+      const serverIds = new Set(serverBlogs.map((b) => b.id));
+      const serverSlugs = new Set(serverBlogs.map((b) => b.slug));
+      const newFromClient = clientBlogs.filter(
+        (b) => !serverIds.has(b.id) && !serverSlugs.has(b.slug)
+      );
+      blogsToSync = [...mergedServer, ...newFromClient];
+    } else {
+      blogsToSync = serverBlogs;
+    }
 
     // 1. Update serverless tmp & disk fallback
     saveBlogsServer(blogsToSync);

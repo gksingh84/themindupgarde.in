@@ -2,19 +2,11 @@ import { NextResponse } from 'next/server';
 import { getBlogsServerAsync, saveBlogServerAsync } from '@/lib/blog-service';
 import { BlogPost } from '@/types/blog';
 import { formatDateDDMMYYYY, parseDate } from '@/lib/date-utils';
+import { applyDynamoCredsHeader } from '@/lib/dynamodb';
 
 export async function GET(request: Request) {
   // If client provided credentials in header, configure runtime
-  const credsHeader = request.headers.get('x-dynamo-creds');
-  if (credsHeader) {
-    try {
-      const parsed = JSON.parse(credsHeader);
-      if (parsed && parsed.accessKeyId) {
-        const { setDynamoRuntimeConfig } = await import('@/lib/dynamodb');
-        setDynamoRuntimeConfig(parsed);
-      }
-    } catch {}
-  }
+  applyDynamoCredsHeader(request.headers.get('x-dynamo-creds'));
 
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
@@ -46,6 +38,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    applyDynamoCredsHeader(request.headers.get('x-dynamo-creds'));
     const newBlog: Partial<BlogPost> = await request.json();
     const blogs = await getBlogsServerAsync();
 

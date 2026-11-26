@@ -38,7 +38,6 @@ export async function getBlogsServerAsync(forceRefresh = false): Promise<BlogPos
 
   if (isDynamoDBConfigured()) {
     try {
-      await resetAllStatsInDynamoDB();
       const dynamoBlogs = await getAllBlogsFromDynamoDB();
       if (dynamoBlogs && dynamoBlogs.length > 0) {
         const targetBlogs = dynamoBlogs.filter((b) => b.id && !String(b.id).startsWith('__'));
@@ -187,11 +186,11 @@ export async function saveBlogServerAsync(blog: BlogPost): Promise<boolean> {
     }
   }
 
-  // 2. Update local state
-  const current = getBlogsServer();
+  // 2. Update memory cache and local state
+  const current = cachedBlogs && cachedBlogs.length > 0 ? [...cachedBlogs] : getBlogsServer();
   const index = current.findIndex((b) => b.id === blog.id || b.slug === blog.slug);
   if (index > -1) {
-    current[index] = blog;
+    current[index] = { ...current[index], ...blog };
   } else {
     current.unshift(blog);
   }
@@ -204,6 +203,8 @@ export async function saveBlogServerAsync(blog: BlogPost): Promise<boolean> {
   });
 
   saveBlogsServer(current);
+  cachedBlogs = current;
+  lastCacheTime = Date.now();
   return true;
 }
 
@@ -228,7 +229,7 @@ export async function getBlogBySlugServerAsync(slug: string): Promise<BlogPost |
     }
     if (
       decoded === 'checklist-to-compare-term-insurance-plans-in-india' &&
-      (b.id === '8' || b.id === '7' || bSlug === 'checklist-to-compare-term-insurance-plans-in-india')
+      (b.id === '8' || bSlug === 'checklist-to-compare-term-insurance-plans-in-india')
     ) {
       return true;
     }
@@ -271,7 +272,7 @@ export function getBlogBySlugServer(slug: string): BlogPost | undefined {
     }
     if (
       decoded === 'checklist-to-compare-term-insurance-plans-in-india' &&
-      (b.id === '8' || b.id === '7' || bSlug === 'checklist-to-compare-term-insurance-plans-in-india')
+      (b.id === '8' || bSlug === 'checklist-to-compare-term-insurance-plans-in-india')
     ) {
       return true;
     }
@@ -311,6 +312,9 @@ export async function deleteBlogServer(id: string): Promise<boolean> {
     }
   }
 
+  if (cachedBlogs) {
+    cachedBlogs = cachedBlogs.filter((b) => b.id !== id && b.slug !== id);
+  }
   const blogs = getBlogsServer();
   const filtered = blogs.filter((b) => b.id !== id && b.slug !== id);
   const success = saveBlogsServer(filtered);

@@ -165,8 +165,6 @@ export function BlogPostClientView({
         if (data && typeof data.views === 'number') {
           setViews(data.views);
           setPost((prev) => (prev ? { ...prev, views: data.views } : prev));
-          const currentPost = ClientStorage.getCustomBlog(post.id || post.slug) || post;
-          ClientStorage.saveBlog({ ...currentPost, views: data.views });
         }
       })
       .catch(() => {});
@@ -226,8 +224,6 @@ export function BlogPostClientView({
             if (typeof data.likes === 'number') {
               setLikes(data.likes);
               setPost((prev) => (prev ? { ...prev, likes: data.likes } : prev));
-              const currentPost = ClientStorage.getCustomBlog(post.id || post.slug) || post;
-              ClientStorage.saveBlog({ ...currentPost, likes: data.likes });
             }
           }
         } catch {}
@@ -247,8 +243,6 @@ export function BlogPostClientView({
           if (typeof data.likes === 'number') {
             setLikes(data.likes);
             setPost((prev) => (prev ? { ...prev, likes: data.likes } : prev));
-            const currentPost = ClientStorage.getCustomBlog(post.id || post.slug) || post;
-            ClientStorage.saveBlog({ ...currentPost, likes: data.likes });
           }
         }
       } catch {}

@@ -32,7 +32,7 @@ export async function PUT(
     applyDynamoCredsHeader(request.headers.get('x-dynamo-creds'));
     const { id } = await params;
     const updates: Partial<BlogPost> = await request.json();
-    const blogs = await getBlogsServerAsync();
+    const blogs = await getBlogsServerAsync(true);
     const index = blogs.findIndex((b) => b.id === id || b.slug === id);
 
     if (index === -1) {

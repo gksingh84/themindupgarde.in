@@ -102,7 +102,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
     const customCreds = ClientStorage.getDynamoCreds();
     const reqHeaders: Record<string, string> = {};
     if (customCreds) {
-      reqHeaders['x-dynamo-creds'] = encodeURIComponent(JSON.stringify(customCreds));
+      reqHeaders['x-dynamo-creds'] = JSON.stringify(customCreds);
     }
     try {
       const res = await fetch('/api/blogs?includeDrafts=true', { headers: reqHeaders });
@@ -124,8 +124,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
 
   useEffect(() => {
     setIsAuthenticated(ClientStorage.isAdminAuthenticated());
-    const merged = ClientStorage.getMergedBlogs(initialBlogs);
-    setBlogs(merged);
+    setBlogs(initialBlogs);
 
     const storedCreds = ClientStorage.getDynamoCreds();
     const reqHeaders: Record<string, string> = {};
@@ -287,7 +286,6 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
   const toggleStatus = async (blog: BlogPost) => {
     const newStatus = blog.status === 'published' ? 'draft' : 'published';
     const updated: BlogPost = { ...blog, status: newStatus };
-    ClientStorage.saveBlog(updated);
     setBlogs((prev) =>
       prev.map((b) => (b.id === blog.id ? updated : b))
     );
@@ -296,9 +294,16 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       newStatus === 'published' ? 'success' : 'info'
     );
     try {
+      const storedCreds = ClientStorage.getDynamoCreds();
+      const reqHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (storedCreds) {
+        reqHeaders['x-dynamo-creds'] = JSON.stringify(storedCreds);
+      }
       await fetch(`/api/blogs/${blog.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: reqHeaders,
         body: JSON.stringify({ status: newStatus }),
       });
     } catch {}
@@ -316,20 +321,28 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       likes: 0,
       publishedAt: formatDateDDMMYYYY(new Date()),
     };
-    ClientStorage.saveBlog(duplicated);
     setBlogs((prev) => [duplicated, ...prev]);
     showToast('Article duplicated as draft', 'success');
 
     try {
+      const storedCreds = ClientStorage.getDynamoCreds();
+      const reqHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (storedCreds) {
+        reqHeaders['x-dynamo-creds'] = JSON.stringify(storedCreds);
+      }
       const res = await fetch('/api/blogs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: reqHeaders,
         body: JSON.stringify(duplicated),
       });
       if (res.ok) {
         const created = await res.json();
         if (created && created.id) {
-          ClientStorage.saveBlog(created);
+          setBlogs((prev) =>
+            prev.map((b) => (b.id === duplicated.id ? created : b))
+          );
         }
       }
     } catch {}
@@ -353,7 +366,12 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
 
     // 3. Notify backend
     try {
-      await fetch(`/api/blogs/${id}`, { method: 'DELETE' });
+      const storedCreds = ClientStorage.getDynamoCreds();
+      const reqHeaders: Record<string, string> = {};
+      if (storedCreds) {
+        reqHeaders['x-dynamo-creds'] = JSON.stringify(storedCreds);
+      }
+      await fetch(`/api/blogs/${id}`, { method: 'DELETE', headers: reqHeaders });
     } catch {}
     finally {
       setDeletingId(null);
