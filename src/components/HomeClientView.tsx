@@ -484,21 +484,21 @@ export function HomeClientView({
           4.I: NEWSLETTER SUBSCRIPTION SECTION
           ======================================================== */}
       <section id="newsletter-section" className="container-custom">
-        <div className="relative rounded-3xl overflow-hidden bg-navy-800 text-offwhite border border-navy-700 p-8 sm:p-12 shadow-editorial-hover">
+        <div className="relative rounded-3xl overflow-hidden bg-white dark:bg-navy-900 text-navy-900 dark:text-offwhite border border-slate-200 dark:border-navy-700 p-8 sm:p-12 shadow-editorial">
           {/* Warm Amber Accent Glow */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-amberBrand/10 blur-[100px] pointer-events-none rounded-full" />
-          <div className="absolute bottom-0 left-0 w-60 h-60 bg-slateBrand/15 blur-[90px] pointer-events-none rounded-full" />
+          <div className="absolute bottom-0 left-0 w-60 h-60 bg-slateBrand/10 blur-[90px] pointer-events-none rounded-full" />
 
           <div className="relative z-10 max-w-2xl mx-auto text-center space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-amberBrand text-navy-950 flex items-center justify-center mx-auto shadow-md shadow-amberBrand/30">
               <Sparkles className="w-6 h-6" />
             </div>
 
-            <h2 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-tight">
+            <h2 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-tight text-navy-900 dark:text-offwhite">
               Upgrade Your Mind. One Insight at a Time.
             </h2>
 
-            <p className="font-sans text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg mx-auto">
+            <p className="font-sans text-xs sm:text-sm text-charcoal-600 dark:text-slate-300 leading-relaxed max-w-lg mx-auto">
               Get thoughtful articles, practical knowledge and fresh perspectives delivered directly to your inbox.
             </p>
 
@@ -509,7 +509,7 @@ export function HomeClientView({
                   value={newsletterName}
                   onChange={(e) => setNewsletterName(e.target.value)}
                   placeholder="Your Name (Optional)"
-                  className="bg-navy-950/80 border border-navy-700 text-offwhite placeholder-slate-400 px-4 py-2.5 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amberBrand transition-colors sm:w-44"
+                  className="bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-700 text-navy-900 dark:text-offwhite placeholder-charcoal-400 dark:placeholder-slate-500 px-4 py-2.5 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amberBrand transition-colors sm:w-44"
                 />
                 <input
                   type="email"
@@ -517,7 +517,7 @@ export function HomeClientView({
                   onChange={(e) => setNewsletterEmail(e.target.value)}
                   placeholder="Enter email address..."
                   required
-                  className="flex-1 bg-navy-950/80 border border-navy-700 text-offwhite placeholder-slate-400 px-4 py-2.5 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amberBrand transition-colors"
+                  className="flex-1 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-700 text-navy-900 dark:text-offwhite placeholder-charcoal-400 dark:placeholder-slate-500 px-4 py-2.5 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amberBrand transition-colors"
                 />
               </div>
 
@@ -527,10 +527,10 @@ export function HomeClientView({
                     type="checkbox"
                     checked={newsletterAgreed}
                     onChange={(e) => setNewsletterAgreed(e.target.checked)}
-                    className="mt-0.5 rounded border-navy-700 bg-navy-950 text-amberBrand focus:ring-0"
+                    className="mt-0.5 rounded border-slate-300 dark:border-navy-700 bg-white dark:bg-navy-950 text-amberBrand focus:ring-0"
                   />
-                  <span className="text-[11px] text-slate-400 leading-tight">
-                    I agree to the <Link href="/privacy-policy" className="underline hover:text-white">Privacy Policy</Link> and wish to receive the weekly email digest.
+                  <span className="text-[11px] text-charcoal-500 dark:text-slate-400 leading-tight">
+                    I agree to the <Link href="/privacy-policy" className="underline hover:text-navy-900 dark:hover:text-white">Privacy Policy</Link> and wish to receive the weekly email digest.
                   </span>
                 </label>
 
