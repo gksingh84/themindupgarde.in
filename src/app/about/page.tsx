@@ -116,7 +116,7 @@ export default function AboutPage() {
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-sm space-y-2 sm:col-span-2 lg:col-span-2">
+          <div className="p-6 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-sm space-y-2">
             <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-500 w-fit">
               <Lightbulb className="w-5 h-5" />
             </div>
