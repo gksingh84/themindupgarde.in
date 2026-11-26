@@ -34,7 +34,9 @@ export function isMatchingSubcategory(
   const subInfo = category.subcategories.find(
     (s) =>
       s.slug.toLowerCase() === target ||
-      s.name.trim().toLowerCase().replace(/[\s_]+/g, '-') === target
+      s.name.trim().toLowerCase().replace(/[\s_]+/g, '-') === target ||
+      (target === 'case-studies' && s.slug === 'case-study') ||
+      (target === 'case-study' && s.slug === 'case-studies')
   );
   const targetName = subInfo ? subInfo.name.trim().toLowerCase() : '';
 
@@ -42,7 +44,13 @@ export function isMatchingSubcategory(
   if (post.subcategory) {
     const postSub = post.subcategory.trim().toLowerCase();
     const postSubSlug = postSub.replace(/[\s_]+/g, '-');
-    if (postSubSlug === target) return true;
+    if (
+      postSubSlug === target ||
+      (postSubSlug === 'case-study' && target === 'case-studies') ||
+      (postSubSlug === 'case-studies' && target === 'case-study')
+    ) {
+      return true;
+    }
     if (targetName && postSub === targetName) return true;
     if (target && postSub.includes(target)) return true;
   }

@@ -106,6 +106,7 @@ export const CATEGORIES: CategoryInfo[] = [
       { name: 'Social Observations', slug: 'social-observations', description: 'Cultural phenomena, relationship dynamics, and modern urban living.' },
       { name: 'Science and Technology', slug: 'science-and-technology', description: 'Everyday gadgets, AI tools, cybersecurity, and technological shifts.' },
       { name: 'Practical Life Lessons', slug: 'practical-life-lessons', description: 'Actionable wisdom on negotiating, problem solving, and resilience.' },
+      { name: 'Case Study', slug: 'case-study', description: 'In-depth real-world breakdowns, practical examples, failure-mode analyses, and strategic takeaways.' },
     ],
   },
 ];
