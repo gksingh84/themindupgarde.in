@@ -170,23 +170,31 @@ export const ClientStorage = {
   getMergedBlogs(initialBlogs: BlogPost[] = []): BlogPost[] {
     if (typeof window === 'undefined') return initialBlogs;
 
-    // One-time cleanup: remove any cached custom blogs that match initialBlogs to prevent stale status overwrites
+    // One-time cleanup: remove any cached custom blogs that are invalid, ghost/untitled, or match initialBlogs
     try {
-      if (initialBlogs && initialBlogs.length > 0) {
-        const customMap = this.getCustomBlogs();
-        const initialKeys = new Set(initialBlogs.map((b) => b.id));
-        const initialSlugs = new Set(initialBlogs.map((b) => b.slug));
-        let changed = false;
-        for (const k in customMap) {
-          const blog = customMap[k];
-          if (blog && (initialKeys.has(blog.id) || initialSlugs.has(blog.slug))) {
-            delete customMap[k];
-            changed = true;
-          }
+      const customMap = this.getCustomBlogs();
+      const initialKeys = new Set(initialBlogs.map((b) => b.id));
+      const initialSlugs = new Set(initialBlogs.map((b) => b.slug));
+      let changed = false;
+      for (const k in customMap) {
+        const blog = customMap[k];
+        if (
+          !blog ||
+          !blog.id ||
+          String(blog.id).startsWith('__') ||
+          String(blog.id).startsWith('subscriber#') ||
+          String(blog.id).startsWith('comment#') ||
+          (blog.title || '').trim().toLowerCase() === 'untitled article' ||
+          (blog.title || '').trim().toLowerCase() === 'untitled post' ||
+          (!blog.title && !blog.content && !blog.slug) ||
+          (initialBlogs.length > 0 && (initialKeys.has(blog.id) || initialSlugs.has(blog.slug)))
+        ) {
+          delete customMap[k];
+          changed = true;
         }
-        if (changed) {
-          localStorage.setItem(CUSTOM_BLOGS_KEY, JSON.stringify(customMap));
-        }
+      }
+      if (changed) {
+        localStorage.setItem(CUSTOM_BLOGS_KEY, JSON.stringify(customMap));
       }
     } catch {}
 

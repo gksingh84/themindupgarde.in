@@ -198,6 +198,44 @@ export function getDynamoDBClient(): DynamoDBDocumentClient {
 }
 
 /**
+ * Helper to determine if an item is a valid blog article and not a system record, subscriber, comment, or ghost item.
+ */
+export function isBlogItem(b: any): boolean {
+  if (!b || !b.id) return false;
+  const idStr = String(b.id);
+  // System items, subscribers, comments, settings, logs, markers
+  if (
+    idStr.startsWith('__') ||
+    idStr.startsWith('subscriber#') ||
+    idStr.startsWith('comment#') ||
+    idStr.startsWith('setting#')
+  ) {
+    return false;
+  }
+  const typeStr = String(b.type || '').toLowerCase();
+  if (
+    [
+      'subscriber',
+      'comment',
+      'notification_settings',
+      'notification_logs',
+      'stats_reset_marker',
+    ].includes(typeStr)
+  ) {
+    return false;
+  }
+  // Must have a real title or slug or content.
+  // A ghost item with no content and no slug, or with default "Untitled Article", is not a blog.
+  const title = String(b.title || '').trim();
+  const slug = String(b.slug || '').trim();
+  const content = String(b.content || '').trim();
+  if (!content && !slug && (!title || title.toLowerCase() === 'untitled article' || title.toLowerCase() === 'untitled post')) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Fetch all blogs from AWS DynamoDB (returns null on connection error so caller falls back gracefully).
  */
 export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[] | null> {
@@ -221,8 +259,34 @@ export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[] | null> {
       lastEvaluatedKey = response.LastEvaluatedKey;
     } while (lastEvaluatedKey);
 
+    // Auto-purge any corrupted ghost records from DynamoDB (e.g. empty drafts without content/slug/title)
+    for (const item of allItems) {
+      if (item && item.id) {
+        const idStr = String(item.id);
+        const typeStr = String(item.type || '').toLowerCase();
+        const title = String(item.title || '').trim().toLowerCase();
+        const content = String(item.content || '').trim();
+        const slug = String(item.slug || '').trim();
+        const email = String(item.email || '').trim();
+
+        if (
+          !idStr.startsWith('__') &&
+          !idStr.startsWith('subscriber#') &&
+          typeStr !== 'subscriber' &&
+          !email &&
+          !content &&
+          !slug &&
+          (!title || title === 'untitled article' || title === 'untitled post')
+        ) {
+          try {
+            client.send(new DeleteCommand({ TableName: getDynamoTableName(), Key: { id: item.id } })).catch(() => {});
+          } catch {}
+        }
+      }
+    }
+
     return (allItems as BlogPost[])
-      .filter((b) => b && b.id && !String(b.id).startsWith('__'))
+      .filter((b) => isBlogItem(b))
       .map((b) => ({
         ...b,
         title: b.title || 'Untitled Article',
@@ -266,7 +330,7 @@ export async function getBlogByIdOrSlugFromDynamoDB(
       Key: { id: idOrSlug },
     });
     const getRes = await client.send(getCommand);
-    if (getRes.Item && !String(getRes.Item.id).startsWith('__')) {
+    if (getRes.Item && isBlogItem(getRes.Item)) {
       return getRes.Item as BlogPost;
     }
 
@@ -283,7 +347,8 @@ export async function getBlogByIdOrSlugFromDynamoDB(
       });
       const scanRes = await client.send(scanCommand);
       if (scanRes.Items && scanRes.Items.length > 0) {
-        return scanRes.Items[0] as BlogPost;
+        const match = scanRes.Items.find(isBlogItem);
+        if (match) return match as BlogPost;
       }
       lastEvaluatedKey = scanRes.LastEvaluatedKey;
     } while (lastEvaluatedKey);
@@ -307,6 +372,7 @@ export async function saveBlogToDynamoDB(blog: BlogPost): Promise<boolean> {
       TableName: getDynamoTableName(),
       Item: {
         ...blog,
+        type: 'blog',
         updatedAt: new Date().toISOString(),
       },
     });
@@ -373,6 +439,7 @@ export async function saveBlogsToDynamoDBDetailed(
       const cleanItem: any = {
         ...blog,
         id: String(blog.id),
+        type: 'blog',
         slug: String(blog.slug || `post-${blog.id}`),
         updatedAt: new Date().toISOString(),
       };
@@ -773,9 +840,7 @@ export async function resetAllStatsInDynamoDB(force = false): Promise<boolean> {
     } while (lastEvaluatedKey);
 
     if (allItems.length > 0) {
-      const blogs = (allItems as BlogPost[]).filter(
-        (b) => b && b.id && !String(b.id).startsWith('__')
-      );
+      const blogs = (allItems as BlogPost[]).filter((b) => isBlogItem(b));
       for (const b of blogs) {
         try {
           await client.send(

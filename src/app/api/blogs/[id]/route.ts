@@ -15,7 +15,8 @@ export async function GET(
 ) {
   applyDynamoCredsHeader(request.headers.get('x-dynamo-creds'));
   const { id } = await params;
-  const blog = await getBlogBySlugServerAsync(id);
+  const decodedId = decodeURIComponent(id);
+  const blog = await getBlogBySlugServerAsync(decodedId);
 
   if (!blog) {
     return NextResponse.json({ error: 'Blog not found' }, { status: 404 });
@@ -31,9 +32,10 @@ export async function PUT(
   try {
     applyDynamoCredsHeader(request.headers.get('x-dynamo-creds'));
     const { id } = await params;
+    const decodedId = decodeURIComponent(id);
     const updates: Partial<BlogPost> = await request.json();
     const blogs = await getBlogsServerAsync(true);
-    const index = blogs.findIndex((b) => b.id === id || b.slug === id);
+    const index = blogs.findIndex((b) => b.id === decodedId || b.slug === decodedId);
 
     if (index === -1) {
       // If it doesn't exist, create it if minimum fields provided
@@ -90,7 +92,8 @@ export async function DELETE(
   try {
     applyDynamoCredsHeader(request.headers.get('x-dynamo-creds'));
     const { id } = await params;
-    const success = await deleteBlogServer(id);
+    const decodedId = decodeURIComponent(id);
+    const success = await deleteBlogServer(decodedId);
 
     return NextResponse.json({
       success,

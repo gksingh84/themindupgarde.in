@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getBlogsServerAsync, saveBlogServerAsync } from '@/lib/blog-service';
 import { BlogPost } from '@/types/blog';
 import { formatDateDDMMYYYY, parseDate } from '@/lib/date-utils';
-import { applyDynamoCredsHeader } from '@/lib/dynamodb';
+import { applyDynamoCredsHeader, isBlogItem } from '@/lib/dynamodb';
 
 export async function GET(request: Request) {
   // If client provided credentials in header, configure runtime
@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   const includeDrafts = searchParams.get('includeDrafts') === 'true';
 
   let blogs = await getBlogsServerAsync(true);
+  blogs = blogs.filter((b) => isBlogItem(b));
 
   if (!includeDrafts) {
     blogs = blogs.filter((b) => b.status === 'published');

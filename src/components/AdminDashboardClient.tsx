@@ -124,7 +124,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
 
   useEffect(() => {
     setIsAuthenticated(ClientStorage.isAdminAuthenticated());
-    setBlogs(initialBlogs);
+    setBlogs(initialBlogs.filter((b) => b && b.id && !String(b.id).startsWith('subscriber#') && !String(b.id).startsWith('__') && (b.content || b.slug || (b.title && b.title !== 'Untitled Article'))));
 
     const storedCreds = ClientStorage.getDynamoCreds();
     const reqHeaders: Record<string, string> = {};
@@ -137,7 +137,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       .then((r) => (r.ok ? r.json() : null))
       .then((fresh) => {
         if (Array.isArray(fresh) && fresh.length > 0) {
-          setBlogs(fresh);
+          setBlogs(fresh.filter((b) => b && b.id && !String(b.id).startsWith('subscriber#') && !String(b.id).startsWith('__') && (b.content || b.slug || (b.title && b.title !== 'Untitled Article'))));
         }
       })
       .catch(() => {});
@@ -301,7 +301,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       if (storedCreds) {
         reqHeaders['x-dynamo-creds'] = JSON.stringify(storedCreds);
       }
-      await fetch(`/api/blogs/${blog.id}`, {
+      await fetch(`/api/blogs/${encodeURIComponent(blog.id)}`, {
         method: 'PUT',
         headers: reqHeaders,
         body: JSON.stringify({ status: newStatus }),
@@ -371,7 +371,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       if (storedCreds) {
         reqHeaders['x-dynamo-creds'] = JSON.stringify(storedCreds);
       }
-      await fetch(`/api/blogs/${id}`, { method: 'DELETE', headers: reqHeaders });
+      await fetch(`/api/blogs/${encodeURIComponent(id)}`, { method: 'DELETE', headers: reqHeaders });
     } catch {}
     finally {
       setDeletingId(null);

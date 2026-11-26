@@ -16,6 +16,7 @@ import {
   incrementBlogLikesInDynamoDB,
   decrementBlogLikesInDynamoDB,
   resetAllStatsInDynamoDB,
+  isBlogItem,
 } from '@/lib/dynamodb';
 
 const DATA_FILE = path.join(process.cwd(), 'src/data/blogs.json');
@@ -40,7 +41,7 @@ export async function getBlogsServerAsync(forceRefresh = false): Promise<BlogPos
     try {
       const dynamoBlogs = await getAllBlogsFromDynamoDB();
       if (dynamoBlogs && dynamoBlogs.length > 0) {
-        const targetBlogs = dynamoBlogs.filter((b) => b.id && !String(b.id).startsWith('__'));
+        const targetBlogs = dynamoBlogs.filter((b) => isBlogItem(b));
 
         // Auto-publish any scheduled posts whose scheduledAt has passed
         const isoNow = new Date().toISOString();
@@ -114,6 +115,8 @@ export function getBlogsServer(): BlogPost[] {
     console.error('Error reading blogs.json:', error);
     blogs = initialBlogs as BlogPost[];
   }
+
+  blogs = blogs.filter((b) => isBlogItem(b));
 
   // Auto-publish any scheduled posts whose scheduledAt has passed
   const now = new Date().toISOString();
