@@ -114,7 +114,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/about" className="hover:text-amberBrand transition-colors">
-                  About Our Mission
+                  About the Author
                 </Link>
               </li>
               <li>
