@@ -35,7 +35,7 @@ export default function EditorialPolicyPage() {
 
         <h2>4. Corrections Policy</h2>
         <p>
-          If you detect a factual discrepancy in any of our published guides, please contact our editorial desk at <a href="mailto:editorial@themindupgrade.in" className="text-amberBrand underline">editorial@themindupgrade.in</a>. We issue prompt corrections with transparent update notes.
+          If you detect a factual discrepancy in any of our published guides, please contact our editorial desk at <a href="mailto:mindupgrade.support@gmail.com" className="text-amberBrand underline font-semibold">mindupgrade.support@gmail.com</a>. We issue prompt corrections with transparent update notes.
         </p>
       </div>
     </div>

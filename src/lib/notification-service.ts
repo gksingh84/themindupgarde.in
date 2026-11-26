@@ -23,7 +23,7 @@ export interface NotificationSettings {
 
 export interface NotificationLog {
   id: string;
-  type: 'comment' | 'like' | 'subscriber' | 'test';
+  type: 'comment' | 'like' | 'subscriber' | 'test' | 'contact';
   title: string;
   message: string;
   recipient: string;
@@ -397,6 +397,7 @@ export async function sendAdminNotification(params: {
           .badge-like { background: #ffe4e6; color: #9f1239; }
           .badge-subscriber { background: #dcfce7; color: #166534; }
           .badge-test { background: #f3e8ff; color: #6b21a8; }
+          .badge-contact { background: #fef3c7; color: #b45309; }
           .title { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; }
           .message { font-size: 14px; line-height: 1.6; color: #334155; background: #f1f5f9; padding: 14px; border-radius: 10px; margin: 12px 0; border-left: 4px solid #4f46e5; }
           .footer { padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; text-align: center; }
@@ -460,6 +461,130 @@ export async function sendAdminNotification(params: {
 
   return {
     success: deliveryStatus === 'sent' || (!transporter && params.type !== 'test'),
+    log,
+    error: deliveryError,
+  };
+}
+
+// Dedicated dispatcher for editorial inquiries & reader messages
+export async function sendEditorialInquiryNotification(params: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): Promise<{ success: boolean; log: NotificationLog; error?: string | null }> {
+  const settings = getNotificationSettings();
+  const recipient = 'mindupgrade.support@gmail.com';
+
+  const transporter = createTransporter(settings);
+
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+          .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+          .header { background: #0f172a; padding: 24px 30px; text-align: left; border-bottom: 3px solid #f59e0b; }
+          .header h1 { margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
+          .header p { margin: 4px 0 0 0; font-size: 12px; color: #cbd5e1; }
+          .content { padding: 28px 30px; }
+          .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: #fef3c7; color: #b45309; margin-bottom: 16px; }
+          .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          .meta-table td { padding: 8px 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+          .meta-table td.label { font-weight: 700; color: #64748b; width: 120px; }
+          .meta-table td.value { color: #0f172a; font-weight: 600; }
+          .message-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #f59e0b; padding: 16px 18px; border-radius: 8px; font-size: 14px; line-height: 1.6; color: #334155; white-space: pre-wrap; margin: 16px 0 24px 0; }
+          .footer { padding: 16px 30px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; }
+          .btn { display: inline-block; padding: 10px 20px; background: #0f172a; color: #ffffff !important; text-decoration: none; font-size: 13px; font-weight: 700; border-radius: 8px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">
+            <h1>The Mind Upgrade</h1>
+            <p>Editorial Inquiries &amp; Desk Notifications</p>
+          </div>
+          <div class="content">
+            <span class="badge">Editorial Inquiry</span>
+            <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 16px 0;">New Reader Inquiry Received</h2>
+            
+            <table class="meta-table">
+              <tr>
+                <td class="label">Sender Name:</td>
+                <td class="value">${params.name}</td>
+              </tr>
+              <tr>
+                <td class="label">Sender Email:</td>
+                <td class="value"><a href="mailto:${params.email}" style="color: #0284c7; text-decoration: none;">${params.email}</a></td>
+              </tr>
+              <tr>
+                <td class="label">Subject:</td>
+                <td class="value">${params.subject}</td>
+              </tr>
+              <tr>
+                <td class="label">Received:</td>
+                <td class="value">${new Date().toISOString()}</td>
+              </tr>
+            </table>
+
+            <div style="font-weight: 700; font-size: 13px; color: #475569; margin-top: 16px;">Message Content:</div>
+            <div class="message-box">${params.message}</div>
+
+            <div style="margin-top: 24px;">
+              <a href="mailto:${params.email}?subject=Re:%20[The%20Mind%20Upgrade]%20${encodeURIComponent(params.subject)}" class="btn">Reply to ${params.name}</a>
+            </div>
+          </div>
+          <div class="footer">
+            Delivered to <strong>${recipient}</strong> • The Mind Upgrade Editorial Desk (themindupgrade.in)
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  let deliveryStatus: 'sent' | 'logged' | 'failed' = 'logged';
+  let deliveryError: string | null = null;
+
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: `"${params.name} via The Mind Upgrade" <${settings.smtpUser || recipient}>`,
+        replyTo: `"${params.name}" <${params.email}>`,
+        to: recipient,
+        subject: `[The Mind Upgrade - ${params.subject}] from ${params.name}`,
+        text: `New Editorial Inquiry\n\nFrom: ${params.name} (${params.email})\nSubject: ${params.subject}\nDate: ${new Date().toISOString()}\n\nMessage:\n${params.message}`,
+        html: htmlBody,
+      });
+      deliveryStatus = 'sent';
+      console.log(`Editorial inquiry successfully emailed to ${recipient}`);
+    } catch (err: any) {
+      deliveryError = err?.message || String(err);
+      console.error(`Failed to email editorial inquiry to ${recipient}:`, err);
+      deliveryStatus = 'failed';
+    }
+  } else {
+    console.log(`Editorial inquiry logged for ${recipient} (SMTP transporter not active): ${params.subject}`);
+  }
+
+  const log = addNotificationLog({
+    type: 'contact',
+    title: `📩 Inquiry: ${params.subject} from ${params.name}`,
+    message: `${params.name} (${params.email}): ${params.message.slice(0, 160)}${params.message.length > 160 ? '...' : ''}${deliveryError ? ` [Error: ${deliveryError}]` : ''}`,
+    recipient,
+    status: deliveryStatus,
+    details: {
+      name: params.name,
+      email: params.email,
+      subject: params.subject,
+      message: params.message,
+      ...(deliveryError ? { error: deliveryError } : {}),
+    },
+  });
+
+  return {
+    success: deliveryStatus === 'sent' || (!transporter),
     log,
     error: deliveryError,
   };

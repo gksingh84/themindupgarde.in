@@ -14,21 +14,47 @@ export function ContactClientView() {
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const { showToast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !message) {
+    if (!name.trim() || !email.trim() || !message.trim()) {
       showToast('Please fill out all required fields.', 'error');
       return;
     }
 
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      showToast('Thank you! Your editorial inquiry has been received.', 'success');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          subject,
+          message: message.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to deliver message.');
+      }
+
+      showToast(
+        'Thank you! Your editorial inquiry has been sent to mindupgrade.support@gmail.com.',
+        'success'
+      );
       setName('');
       setEmail('');
       setMessage('');
-    }, 800);
+    } catch (err: any) {
+      showToast(
+        err?.message || 'Failed to send message. Please email mindupgrade.support@gmail.com directly.',
+        'error'
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const faqs = [
@@ -143,9 +169,9 @@ export function ContactClientView() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3 rounded-xl bg-navy-800 hover:bg-navy-950 dark:bg-amberBrand dark:hover:bg-amberBrand/90 text-white dark:text-navy-950 font-bold text-xs shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              className="w-full py-3 rounded-xl bg-navy-800 hover:bg-navy-950 dark:bg-amberBrand dark:hover:bg-amberBrand/90 text-white dark:text-navy-950 font-bold text-xs shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
             >
-              <span>{submitting ? 'Sending Message...' : 'Send Message'}</span>
+              <span>{submitting ? 'Sending Message to Editorial Desk...' : 'Send Message'}</span>
               <Send className="w-3.5 h-3.5" />
             </button>
           </form>
