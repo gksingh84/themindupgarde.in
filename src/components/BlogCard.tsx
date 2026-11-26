@@ -163,18 +163,6 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
                 <span>{likes}</span>
               </button>
               <button
-                onClick={handleBookmark}
-                className={`p-2 rounded-xl border transition-colors cursor-pointer ${
-                  isBookmarked
-                    ? 'bg-amberBrand/20 text-amberBrand border-amberBrand/40'
-                    : 'bg-slate-100 dark:bg-navy-800 text-charcoal-500 dark:text-slate-400 hover:text-navy-800 dark:hover:text-white border-slate-200 dark:border-navy-700'
-                }`}
-                title="Save bookmark"
-                aria-label="Bookmark article"
-              >
-                <Bookmark className="w-4 h-4 fill-current" />
-              </button>
-              <button
                 onClick={handleShare}
                 className="p-2 rounded-xl bg-slate-100 dark:bg-navy-800 text-charcoal-500 dark:text-slate-400 hover:text-navy-800 dark:hover:text-white border border-slate-200 dark:border-navy-700 transition-colors cursor-pointer"
                 title="Share article"
