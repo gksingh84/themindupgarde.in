@@ -830,7 +830,7 @@ export function BlogPostClientView({
                 </div>
                 <p className="text-xs sm:text-sm text-charcoal-600 dark:text-slate-300 leading-relaxed">
                   {post.author.bio ||
-                    'Founder and Managing Editor of The Mind Upgrade. Writing on personal finance systems, insurance awareness, behavioral psychology, and everyday knowledge.'}
+                    'Founder and Author of The Mind Upgrade. Writing on personal finance systems, insurance awareness, behavioral psychology, and everyday knowledge.'}
                 </p>
               </div>
             </div>

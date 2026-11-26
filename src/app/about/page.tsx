@@ -35,7 +35,7 @@ export default function AboutPage() {
           </div>
           <div>
             <h2 className="font-serif text-2xl font-bold text-navy-800 dark:text-offwhite">About the Founder</h2>
-            <span className="text-xs text-amberBrand font-bold block">Gaurav Kumar Singh — Founder &amp; Managing Editor</span>
+            <span className="text-xs text-amberBrand font-bold block">Gaurav Kumar Singh — Founder &amp; Author</span>
           </div>
         </div>
 

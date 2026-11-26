@@ -135,10 +135,7 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
                   className="w-10 h-10 rounded-full border border-amberBrand/40 bg-navy-800 object-cover"
                 />
               )}
-              <div className="flex flex-col">
-                <span className="text-xs sm:text-sm font-bold text-navy-800 dark:text-offwhite">{post.author.name}</span>
-                <span className="text-[11px] text-charcoal-500 dark:text-slate-400">{post.author.role}</span>
-              </div>
+              <span className="text-xs sm:text-sm font-bold text-navy-800 dark:text-offwhite">{post.author.name}</span>
             </div>
 
             <div className="flex items-center gap-2">

@@ -148,7 +148,7 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
   const [excerpt, setExcerpt] = useState(initialPost?.excerpt || '');
   const [content, setContent] = useState(initialPost?.content || '');
   const [authorName, setAuthorName] = useState(initialPost?.author?.name || 'Gaurav Kumar Singh');
-  const [authorRole, setAuthorRole] = useState(initialPost?.author?.role || 'Founder & Managing Editor');
+  const [authorRole, setAuthorRole] = useState(initialPost?.author?.role || 'Founder & Author');
   const [authorAvatar, setAuthorAvatar] = useState(initialPost?.author?.avatar ?? '/images/gaurav-kumar-singh.jpg');
   const [authorBio, setAuthorBio] = useState(initialPost?.author?.bio || 'Writer focused on personal finance systems, insurance awareness, and behavioural economics.');
   const [showAuthorPhoto, setShowAuthorPhoto] = useState(initialPost?.author?.showPhoto !== false);
@@ -200,7 +200,7 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
       setContent(post.content || '');
       if (post.author && typeof post.author === 'object') {
         setAuthorName(post.author.name || 'Gaurav Kumar Singh');
-        setAuthorRole(post.author.role || 'Founder & Managing Editor');
+        setAuthorRole(post.author.role || 'Founder & Author');
         setAuthorAvatar(post.author.avatar || '/images/gaurav-kumar-singh.jpg');
         setAuthorBio(post.author.bio || '');
         setShowAuthorPhoto(post.author.showPhoto !== false);
