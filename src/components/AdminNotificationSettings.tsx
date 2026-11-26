@@ -216,6 +216,21 @@ export function AdminNotificationSettings() {
           </button>
         </div>
 
+        {!settings.smtpPass && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold text-sm">Email Dispatch is Currently in Log-Only Mode</p>
+              <p className="text-xs leading-relaxed text-charcoal-700 dark:text-slate-300">
+                Editorial inquiries and alerts are recorded in your <strong>Notification History Inbox</strong> below, but are not dispatched to your Gmail inbox (<strong>{settings.adminEmail || 'mindupgrade.support@gmail.com'}</strong>) because a 16-character Google App Password has not been added yet.
+              </p>
+              <p className="text-[11px] text-charcoal-600 dark:text-slate-400 pt-1">
+                👉 Click <strong>Custom SMTP Email Server Configuration</strong> below, enter your 16-character Google App Password from your Google Account (Security &gt; 2-Step Verification &gt; App Passwords), and click <strong>Save Email Settings</strong>.
+              </p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSaveSettings} className="space-y-6">
           {/* Email ID Field */}
           <div>
@@ -474,10 +489,19 @@ export function AdminNotificationSettings() {
                     className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       log.status === 'sent'
                         ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                        : log.status === 'failed'
+                        ? 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400'
+                        : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
                     }`}
+                    title={
+                      log.status === 'sent'
+                        ? 'Email delivered to inbox'
+                        : log.status === 'failed'
+                        ? 'Delivery failed'
+                        : 'Recorded in dashboard inbox (Google App Password required for live email dispatch)'
+                    }
                   >
-                    {log.status === 'sent' ? '✓ SENT' : 'LOGGED'}
+                    {log.status === 'sent' ? '✓ SENT' : log.status === 'failed' ? 'FAILED' : 'LOGGED (NO APP PASSWORD)'}
                   </span>
                   <span className="block text-[10px] text-slate-400 mt-1">
                     {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

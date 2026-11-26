@@ -295,7 +295,9 @@ function createTransporter(settings: NotificationSettings) {
     if (host.includes('gmail.com')) {
       pass = pass.replace(/\s+/g, '');
       return nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: {
           user,
           pass,
@@ -315,12 +317,12 @@ function createTransporter(settings: NotificationSettings) {
 
 // Core notification dispatcher
 export async function sendAdminNotification(params: {
-  type: 'comment' | 'like' | 'subscriber' | 'test';
+  type: 'comment' | 'like' | 'subscriber' | 'test' | 'contact';
   title: string;
   message: string;
   details?: Record<string, unknown>;
 }): Promise<{ success: boolean; log: NotificationLog; error?: string | null }> {
-  const settings = getNotificationSettings();
+  const settings = await getNotificationSettingsAsync();
 
   // Check event toggles
   if (params.type === 'comment' && !settings.notifyOnComment) {
@@ -473,7 +475,7 @@ export async function sendEditorialInquiryNotification(params: {
   subject: string;
   message: string;
 }): Promise<{ success: boolean; log: NotificationLog; error?: string | null }> {
-  const settings = getNotificationSettings();
+  const settings = await getNotificationSettingsAsync();
   const recipient = 'mindupgrade.support@gmail.com';
 
   const transporter = createTransporter(settings);
@@ -565,6 +567,7 @@ export async function sendEditorialInquiryNotification(params: {
       deliveryStatus = 'failed';
     }
   } else {
+    deliveryError = 'Google App Password / SMTP Password not configured. Saved to Admin Notification Inbox.';
     console.log(`Editorial inquiry logged for ${recipient} (SMTP transporter not active): ${params.subject}`);
   }
 
