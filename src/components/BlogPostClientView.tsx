@@ -474,42 +474,6 @@ export function BlogPostClientView({
             </p>
           )}
 
-          {/* Table of Contents for Mobile View (Directly below Subtitle/Lead Excerpt) */}
-          {toc.length > 0 && (
-            <div className="block lg:hidden my-6 text-left max-w-2xl mx-auto">
-              <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-editorial space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-navy-800 pb-2">
-                  <div className="flex items-center gap-2">
-                    <List className="w-4 h-4 text-amberBrand shrink-0" />
-                    <h4 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite uppercase tracking-wider">
-                      Table of Contents
-                    </h4>
-                  </div>
-                  <span className="text-[11px] font-medium text-slateBrand dark:text-slate-400">
-                    {toc.length} {toc.length === 1 ? 'section' : 'sections'}
-                  </span>
-                </div>
-                <nav className="space-y-1.5 max-h-64 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin text-xs">
-                  {toc.map((item) => (
-                    <a
-                      key={item.id}
-                      href={`#${item.id}`}
-                      className={`block py-1 transition-colors break-words ${
-                        item.level === 3 ? 'pl-3 text-[11px]' : 'font-semibold'
-                      } ${
-                        activeTocId === item.id
-                          ? 'text-amberBrand font-bold border-l-2 border-amberBrand pl-2'
-                          : 'text-charcoal-600 dark:text-slate-400 hover:text-navy-800 dark:hover:text-offwhite'
-                      }`}
-                    >
-                      {item.text}
-                    </a>
-                  ))}
-                </nav>
-              </div>
-            </div>
-          )}
-
           {/* Author Metadata Bar */}
           <div className="pt-4 pb-2 border-t border-b border-slate-200 dark:border-navy-700 flex flex-wrap items-center justify-center gap-6 text-xs text-charcoal-500 dark:text-slate-400">
             <div className="flex items-center gap-2.5">
@@ -591,6 +555,42 @@ export function BlogPostClientView({
             </figcaption>
           )}
         </figure>
+
+        {/* Table of Contents for Mobile View (Directly below Cover Image on mobile screens) */}
+        {toc.length > 0 && (
+          <div className="block lg:hidden max-w-4xl mx-auto mt-4 mb-2">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-editorial space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-navy-800 pb-2">
+                <div className="flex items-center gap-2">
+                  <List className="w-4 h-4 text-amberBrand shrink-0" />
+                  <h4 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite uppercase tracking-wider">
+                    Table of Contents
+                  </h4>
+                </div>
+                <span className="text-[11px] font-medium text-slateBrand dark:text-slate-400">
+                  {toc.length} {toc.length === 1 ? 'section' : 'sections'}
+                </span>
+              </div>
+              <nav className="space-y-1.5 max-h-64 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin text-xs">
+                {toc.map((item) => (
+                  <a
+                    key={item.id}
+                    href={`#${item.id}`}
+                    className={`block py-1 transition-colors break-words ${
+                      item.level === 3 ? 'pl-3 text-[11px]' : 'font-semibold'
+                    } ${
+                      activeTocId === item.id
+                        ? 'text-amberBrand font-bold border-l-2 border-amberBrand pl-2'
+                        : 'text-charcoal-600 dark:text-slate-400 hover:text-navy-800 dark:hover:text-offwhite'
+                    }`}
+                  >
+                    {item.text}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          </div>
+        )}
 
         {/* 5.2: 2-Column Editorial Layout (Left Sticky Sidebar Cards + Right Reading Column) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 max-w-6xl mx-auto">
