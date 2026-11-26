@@ -75,28 +75,6 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
   const [dynamoConfigured, setDynamoConfigured] = useState<boolean | null>(null);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isResettingStats, setIsResettingStats] = useState(false);
-
-  const handleResetAllStats = async () => {
-    if (!confirm('Are you sure you want to reset all article likes and reads (views) to 0 across DynamoDB and the website?')) {
-      return;
-    }
-    setIsResettingStats(true);
-    try {
-      const res = await fetch('/api/admin/reset-stats', { method: 'POST' });
-      if (res.ok) {
-        ClientStorage.clearAllStats();
-        setBlogs((prev) => prev.map((b) => ({ ...b, views: 0, likes: 0 })));
-        showToast('All likes and reads have been reset to 0 across DynamoDB and the website!', 'success');
-      } else {
-        showToast('Failed to reset stats', 'error');
-      }
-    } catch {
-      showToast('Error resetting stats', 'error');
-    } finally {
-      setIsResettingStats(false);
-    }
-  };
 
   const fetchFreshBlogs = async () => {
     setIsRefreshing(true);
@@ -876,16 +854,6 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
               >
                 <RefreshCw className={`w-3.5 h-3.5 text-amberBrand ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Refresh Stats</span>
-              </button>
-
-              <button
-                onClick={handleResetAllStats}
-                disabled={isResettingStats}
-                className="px-3 py-2 rounded-xl bg-rose-500/10 dark:bg-rose-500/20 border border-rose-500/30 text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-500 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
-                title="Reset all article likes and reads to 0 in DynamoDB and Admin portal"
-              >
-                <Trash2 className={`w-3.5 h-3.5 text-rose-500 ${isResettingStats ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">{isResettingStats ? 'Resetting...' : 'Reset Stats to 0'}</span>
               </button>
 
               <button
