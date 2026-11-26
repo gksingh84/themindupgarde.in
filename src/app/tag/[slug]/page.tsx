@@ -48,12 +48,12 @@ export default async function TagArchivePage({
       </div>
 
       {/* Header */}
-      <div className="p-6 sm:p-10 rounded-3xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-editorial space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slateBrand/10 text-slateBrand dark:text-amberBrand text-xs font-bold uppercase tracking-wider">
-          <TagIcon className="w-3.5 h-3.5" />
+      <div className="px-5 py-4 sm:px-8 sm:py-5 rounded-3xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-editorial space-y-2">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slateBrand/10 text-slateBrand dark:text-amberBrand text-[11px] font-bold uppercase tracking-wider">
+          <TagIcon className="w-3 h-3" />
           <span>Topic Archive</span>
         </div>
-        <h1 className="font-serif text-3xl sm:text-4xl font-extrabold text-navy-800 dark:text-offwhite capitalize">
+        <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-navy-800 dark:text-offwhite capitalize">
           #{rawTag}
         </h1>
         <p className="text-xs sm:text-sm text-charcoal-600 dark:text-slate-300">

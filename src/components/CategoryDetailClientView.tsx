@@ -148,9 +148,9 @@ function CategoryDetailContent({
   }, [categoryBlogs, category]);
 
   return (
-    <div className="container-custom py-8 sm:py-12 space-y-8">
+    <div className="container-custom py-6 sm:py-8 space-y-6">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs text-charcoal-500 dark:text-slate-400">
+      <div className="flex items-center gap-2 text-xs font-semibold text-charcoal-500 dark:text-slate-400">
         <Link href="/" className="hover:text-amberBrand transition-colors">
           Home
         </Link>
@@ -177,31 +177,31 @@ function CategoryDetailContent({
       </div>
 
       {/* Category Hero Banner */}
-      <div className="p-6 sm:p-10 rounded-3xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-editorial space-y-6 relative overflow-hidden">
+      <div className="px-5 py-4 sm:px-8 sm:py-5 rounded-3xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-editorial space-y-3.5 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-amberBrand/5 blur-[100px] pointer-events-none rounded-full" />
 
-        <div className="space-y-3 relative z-10 max-w-3xl">
+        <div className="space-y-1.5 sm:space-y-2 relative z-10 max-w-3xl">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slateBrand/10 text-slateBrand dark:text-amberBrand border border-slateBrand/20">
-              <Sparkles className="w-3.5 h-3.5 text-amberBrand" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-slateBrand/10 text-slateBrand dark:text-amberBrand border border-slateBrand/20">
+              <Sparkles className="w-3 h-3 text-amberBrand" />
               <span>{activeSubcategory ? `${category.name} • ${activeSubcategory.name}` : category.name}</span>
             </span>
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-navy-800 text-charcoal-700 dark:text-slate-300">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-navy-800 text-charcoal-700 dark:text-slate-300">
               {filteredBlogs.length} {filteredBlogs.length === 1 ? 'Article' : 'Articles'}
             </span>
           </div>
 
-          <h1 className="font-serif text-3xl sm:text-5xl font-black text-navy-800 dark:text-offwhite tracking-tight">
+          <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-black text-navy-800 dark:text-offwhite tracking-tight leading-tight">
             {activeSubcategory ? activeSubcategory.name : category.name}
           </h1>
 
-          <p className="font-sans text-sm sm:text-base text-charcoal-600 dark:text-slate-300 leading-relaxed">
+          <p className="font-sans text-xs sm:text-sm text-charcoal-600 dark:text-slate-300 leading-relaxed">
             {activeSubcategory ? activeSubcategory.description : category.description}
           </p>
         </div>
 
         {/* Subcategories Filter Pills */}
-        <div className="pt-4 border-t border-slate-100 dark:border-navy-800 space-y-2 relative z-10">
+        <div className="pt-2.5 border-t border-slate-100 dark:border-navy-800 space-y-1.5 relative z-10">
           <div className="flex items-center justify-between text-xs font-bold text-slateBrand dark:text-slate-400">
             <span className="flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5 text-amberBrand" />
@@ -217,7 +217,7 @@ function CategoryDetailContent({
             )}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
             <Link
               href={`/categories/${category.slug}`}
               onClick={() => setActiveSub('')}
