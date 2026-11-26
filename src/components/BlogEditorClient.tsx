@@ -780,7 +780,9 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
               <h3 className="font-serif text-sm font-bold text-navy-800 dark:text-offwhite">
                 Featured Cover Image
               </h3>
-              <span className="text-[10px] text-charcoal-500 font-sans">JPG, PNG, WebP</span>
+              <span className="text-[10px] text-amberBrand font-semibold font-sans">
+                16:9 ratio (1600×900 or 1200×675 px)
+              </span>
             </div>
 
             <div className="space-y-3">
