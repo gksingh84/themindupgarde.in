@@ -484,7 +484,7 @@ export function HomeClientView({
           4.I: NEWSLETTER SUBSCRIPTION SECTION
           ======================================================== */}
       <section id="newsletter-section" className="container-custom">
-        <div className="relative rounded-3xl overflow-hidden bg-white dark:bg-navy-900 text-navy-900 dark:text-offwhite border border-slate-200 dark:border-navy-700 p-6 sm:p-8 md:p-10 shadow-editorial">
+        <div className="relative rounded-3xl overflow-hidden bg-white dark:bg-navy-900 text-navy-900 dark:text-offwhite border border-slate-300 dark:border-navy-600 p-6 sm:p-8 md:p-10 shadow-editorial">
           {/* Warm Amber Accent Glow */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-amberBrand/10 blur-[100px] pointer-events-none rounded-full" />
           <div className="absolute bottom-0 left-0 w-60 h-60 bg-slateBrand/10 blur-[90px] pointer-events-none rounded-full" />
