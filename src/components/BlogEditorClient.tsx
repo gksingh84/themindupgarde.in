@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BlogPost, ArticleStatus } from '@/types/blog';
@@ -130,6 +130,13 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastAutosave, setLastAutosave] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
+  const isLoadedRef = useRef(false);
+
+  const draftStorageKey = isEditing && (postId || (initialPost && (initialPost.id || initialPost.slug)))
+    ? `tmu_draft_edit_${postId || (initialPost && (initialPost.id || initialPost.slug))}`
+    : 'tmu_draft_new';
 
   // Form State
   const [title, setTitle] = useState(initialPost?.title || '');
@@ -215,7 +222,176 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
         setMetaDescription(post.seo.metaDescription || '');
       }
     }
-  }, [initialPost, postId]);
+
+    // Check for auto-saved draft in browser storage
+    try {
+      const savedDraftRaw = localStorage.getItem(draftStorageKey);
+      if (savedDraftRaw) {
+        const draft = JSON.parse(savedDraftRaw);
+        const hasDraftData = Boolean(draft && (draft.title || draft.content || draft.subtitle));
+        if (hasDraftData) {
+          const isDiffFromPost = !post || draft.title !== post.title || draft.content !== post.content || draft.subtitle !== post.subtitle;
+          if (isDiffFromPost) {
+            if (draft.title !== undefined) setTitle(draft.title);
+            if (draft.subtitle !== undefined) setSubtitle(draft.subtitle);
+            if (draft.slug !== undefined) setSlug(draft.slug);
+            if (draft.category !== undefined) setCategory(draft.category);
+            if (draft.subcategory !== undefined) setSubcategory(draft.subcategory);
+            if (draft.tagsInput !== undefined) setTagsInput(draft.tagsInput);
+            if (draft.coverImage !== undefined) setCoverImage(draft.coverImage);
+            if (draft.coverCaption !== undefined) setCoverCaption(draft.coverCaption);
+            if (draft.excerpt !== undefined) setExcerpt(draft.excerpt);
+            if (draft.content !== undefined) setContent(draft.content);
+            if (draft.authorName !== undefined) setAuthorName(draft.authorName);
+            if (draft.authorRole !== undefined) setAuthorRole(draft.authorRole);
+            if (draft.authorAvatar !== undefined) setAuthorAvatar(draft.authorAvatar);
+            if (draft.authorBio !== undefined) setAuthorBio(draft.authorBio);
+            if (draft.showAuthorPhoto !== undefined) setShowAuthorPhoto(draft.showAuthorPhoto);
+            if (draft.status !== undefined) setStatus(draft.status);
+            if (draft.featured !== undefined) setFeatured(draft.featured);
+            if (draft.editorsPick !== undefined) setEditorsPick(draft.editorsPick);
+            if (draft.publishedAt !== undefined) setPublishedAt(draft.publishedAt);
+            if (draft.scheduledAt !== undefined) setScheduledAt(draft.scheduledAt);
+            if (draft.metaTitle !== undefined) setMetaTitle(draft.metaTitle);
+            if (draft.metaDescription !== undefined) setMetaDescription(draft.metaDescription);
+            if (draft.savedAt) {
+              setLastAutosave(new Date(draft.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            }
+            setRestoredFromDraft(true);
+            showToast('Unsaved draft recovered from your last session!', 'info');
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Draft restoration error:', err);
+    } finally {
+      setTimeout(() => {
+        isLoadedRef.current = true;
+      }, 500);
+    }
+  }, [initialPost, postId, draftStorageKey, showToast]);
+
+  // Auto-save draft to localStorage whenever fields change
+  useEffect(() => {
+    if (!isLoadedRef.current) return;
+
+    const hasMeaningfulContent = Boolean(
+      title.trim() ||
+      (content.trim() && content !== '<p>Start writing your high-impact blog article...</p>') ||
+      subtitle.trim()
+    );
+
+    if (!hasMeaningfulContent) return;
+
+    setHasUnsavedChanges(true);
+
+    const timer = setTimeout(() => {
+      try {
+        const draftPayload = {
+          savedAt: new Date().toISOString(),
+          title,
+          subtitle,
+          slug,
+          category,
+          subcategory,
+          tagsInput,
+          coverImage,
+          coverCaption,
+          excerpt,
+          content,
+          authorName,
+          authorRole,
+          authorAvatar,
+          authorBio,
+          showAuthorPhoto,
+          status,
+          featured,
+          editorsPick,
+          publishedAt,
+          scheduledAt,
+          metaTitle,
+          metaDescription,
+        };
+        localStorage.setItem(draftStorageKey, JSON.stringify(draftPayload));
+        setLastAutosave(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      } catch (err) {
+        console.warn('Draft auto-save notice:', err);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [
+    title,
+    subtitle,
+    slug,
+    category,
+    subcategory,
+    tagsInput,
+    coverImage,
+    coverCaption,
+    excerpt,
+    content,
+    authorName,
+    authorRole,
+    authorAvatar,
+    authorBio,
+    showAuthorPhoto,
+    status,
+    featured,
+    editorsPick,
+    publishedAt,
+    scheduledAt,
+    metaTitle,
+    metaDescription,
+    draftStorageKey,
+  ]);
+
+  // Warn if user attempts to leave or refresh with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Handle discarding draft
+  const handleDiscardDraft = () => {
+    if (!confirm('Discard your auto-saved draft and reset to original content?')) return;
+    try {
+      localStorage.removeItem(draftStorageKey);
+      setRestoredFromDraft(false);
+      setHasUnsavedChanges(false);
+      setLastAutosave(null);
+
+      const post = initialPost;
+      if (post) {
+        setTitle(post.title || '');
+        setSubtitle(post.subtitle || '');
+        setSlug(post.slug || '');
+        setCategory(post.category || 'Personal Finance');
+        setSubcategory(post.subcategory || '');
+        setTagsInput(Array.isArray(post.tags) ? post.tags.join(', ') : '');
+        setCoverImage(post.coverImage || '/images/financial-independence.svg');
+        setCoverCaption(post.coverCaption || '');
+        setExcerpt(post.excerpt || '');
+        setContent(post.content || '');
+      } else {
+        setTitle('');
+        setSubtitle('');
+        setSlug('');
+        setContent('');
+        setExcerpt('');
+        setTagsInput('Wealth, Discipline');
+        setCoverImage('/images/financial-independence.svg');
+      }
+      showToast('Auto-saved draft discarded', 'info');
+    } catch {}
+  };
 
   // Selected category info
   const selectedCatObj = CATEGORIES.find(
@@ -367,6 +543,11 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
       });
 
       if (res.ok) {
+        try {
+          localStorage.removeItem(draftStorageKey);
+        } catch {}
+        setHasUnsavedChanges(false);
+        setRestoredFromDraft(false);
         setLastAutosave(new Date().toLocaleTimeString());
         showToast(
           isEditing ? 'Article updated successfully!' : 'Article created successfully!',
@@ -381,6 +562,11 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
           id: targetId || String(Date.now()),
         } as BlogPost;
         ClientStorage.saveBlog(savedRecord);
+        try {
+          localStorage.removeItem(draftStorageKey);
+        } catch {}
+        setHasUnsavedChanges(false);
+        setRestoredFromDraft(false);
         setLastAutosave(new Date().toLocaleTimeString());
         showToast('Article saved to your browser storage!', 'success');
         router.push('/admin');
@@ -393,6 +579,11 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
         id: (initialPost && initialPost.id) || String(Date.now()),
       } as BlogPost;
       ClientStorage.saveBlog(savedRecord);
+      try {
+        localStorage.removeItem(draftStorageKey);
+      } catch {}
+      setHasUnsavedChanges(false);
+      setRestoredFromDraft(false);
       showToast('Article saved locally (offline mode)', 'success');
       router.push('/admin');
     } finally {
@@ -435,9 +626,17 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
             <h1 className="font-serif text-xl sm:text-2xl font-bold text-navy-800 dark:text-offwhite">
               {isEditing ? `Edit Article: ${title || 'Untitled'}` : 'Write New Publication'}
             </h1>
-            <p className="text-xs text-charcoal-500 dark:text-slate-400">
-              {lastAutosave ? `Last saved at ${lastAutosave}` : 'Draft autosave enabled'}
-            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="flex items-center gap-1.5 text-xs text-charcoal-500 dark:text-slate-400">
+                <span className={`w-2 h-2 rounded-full ${lastAutosave ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+                {lastAutosave ? `Draft auto-saved at ${lastAutosave}` : 'Draft auto-save active'}
+              </span>
+              {restoredFromDraft && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amberBrand/20 text-amberBrand">
+                  Draft Restored
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -459,6 +658,28 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
           </button>
         </div>
       </div>
+
+      {/* Draft Restored Banner */}
+      {restoredFromDraft && (
+        <div className="p-3.5 px-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs flex items-center justify-between gap-4 text-amber-900 dark:text-amber-200 animate-fade-in shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-4 h-4 text-amberBrand shrink-0" />
+            <div>
+              <span className="font-bold">Auto-saved draft recovered!</span>{' '}
+              <span className="opacity-90">
+                Your unsaved content was preserved across page refresh (last saved at {lastAutosave || 'recently'}).
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleDiscardDraft}
+            className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 font-bold text-xs transition-colors shrink-0 cursor-pointer"
+          >
+            Discard Draft
+          </button>
+        </div>
+      )}
 
       {/* Editor Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

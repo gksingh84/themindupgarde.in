@@ -289,6 +289,13 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
     },
   });
 
+  // Synchronize externally restored or loaded content into the TipTap canvas
+  useEffect(() => {
+    if (editor && content && content !== editor.getHTML()) {
+      editor.commands.setContent(content, { emitUpdate: false });
+    }
+  }, [editor, content]);
+
   const setLink = () => {
     if (!editor) return;
     const previousUrl = editor.getAttributes('link').href;
