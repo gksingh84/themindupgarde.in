@@ -7,10 +7,11 @@ import {
 } from '@/lib/blog-service';
 import { HomeClientView } from '@/components/HomeClientView';
 
-export const revalidate = 60; // ISR cache: instant <50ms edge delivery with background revalidation
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function HomePage() {
-  const allBlogs = await getBlogsServerAsync();
+  const allBlogs = await getBlogsServerAsync(true);
   const publishedBlogs = allBlogs.filter((b) => b.status === 'published');
 
   // Featured post: specifically selected featured story or latest published article

@@ -128,6 +128,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/bookmarks" className="hover:text-amberBrand transition-colors">
+                  Saved Bookmarks
+                </Link>
+              </li>
+              <li>
                 <Link href="/contact" className="hover:text-amberBrand transition-colors">
                   Editorial Inquiries
                 </Link>

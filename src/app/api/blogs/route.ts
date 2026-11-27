@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { getBlogsServerAsync, saveBlogServerAsync } from '@/lib/blog-service';
 import { BlogPost } from '@/types/blog';
 import { formatDateDDMMYYYY, parseDate } from '@/lib/date-utils';
@@ -81,6 +82,10 @@ export async function POST(request: Request) {
 
     // Save to DynamoDB and local fallback
     await saveBlogServerAsync(created);
+    try {
+      revalidatePath('/');
+      revalidatePath('/admin');
+    } catch {}
 
     // If published, trigger subscriber email notifications
     let notificationResult = null;

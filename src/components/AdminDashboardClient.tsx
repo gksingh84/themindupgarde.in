@@ -297,6 +297,11 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
         featured: b.id === blog.id ? newFeatured : (newFeatured ? false : b.featured),
       }))
     );
+    if (newFeatured) {
+      ClientStorage.setCachedHeroPost({ ...blog, featured: true });
+    } else {
+      ClientStorage.clearCachedHeroPost();
+    }
     showToast(
       newFeatured ? `Set "${blog.title}" as Featured Story (Hero)!` : `Removed from Featured Story`,
       'success'

@@ -15,8 +15,10 @@ import {
   ShieldCheck, 
   Bell, 
   ArrowRight,
-  Mail
+  Mail,
+  Bookmark
 } from 'lucide-react';
+import { ClientStorage } from '@/lib/client-storage';
 
 interface HeaderProps {
   onSearchClick?: () => void;
@@ -30,6 +32,20 @@ export function Header({ onSearchClick, onSubscribeClick }: HeaderProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [mobileExpandedCat, setMobileExpandedCat] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [bookmarkCount, setBookmarkCount] = useState<number>(0);
+
+  useEffect(() => {
+    const updateCount = () => {
+      setBookmarkCount(ClientStorage.getBookmarks().length);
+    };
+    updateCount();
+    window.addEventListener('tmu_bookmarks_updated', updateCount);
+    window.addEventListener('storage', updateCount);
+    return () => {
+      window.removeEventListener('tmu_bookmarks_updated', updateCount);
+      window.removeEventListener('storage', updateCount);
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -176,6 +192,21 @@ export function Header({ onSearchClick, onSubscribeClick }: HeaderProps) {
               <Search className="w-4 h-4" />
             </button>
 
+            {/* Bookmarks Quick Link */}
+            <Link
+              href="/bookmarks"
+              className="relative p-2 sm:p-2.5 rounded-xl bg-slate-100 dark:bg-navy-900 text-charcoal-700 dark:text-slate-300 hover:text-amberBrand dark:hover:text-amberBrand border border-slate-200 dark:border-navy-700 transition-all cursor-pointer"
+              title={bookmarkCount > 0 ? `Saved Articles (${bookmarkCount})` : 'Saved Articles'}
+              aria-label="Saved Bookmarks"
+            >
+              <Bookmark className={`w-4 h-4 ${bookmarkCount > 0 ? 'fill-amberBrand text-amberBrand' : ''}`} />
+              {bookmarkCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-amberBrand text-navy-950 font-black text-[9px] flex items-center justify-center shadow-sm">
+                  {bookmarkCount}
+                </span>
+              )}
+            </Link>
+
             {/* Theme Toggle (Light / Dark) */}
             <button
               onClick={toggleTheme}
@@ -284,6 +315,21 @@ export function Header({ onSearchClick, onSubscribeClick }: HeaderProps) {
           </div>
 
           <div className="pt-2 border-t border-slate-200 dark:border-navy-800 space-y-2">
+            <Link
+              href="/bookmarks"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-charcoal-700 dark:text-slate-300 hover:text-amberBrand"
+            >
+              <div className="flex items-center gap-2">
+                <Bookmark className="w-3.5 h-3.5 text-amberBrand" />
+                <span>Saved Bookmarks</span>
+              </div>
+              {bookmarkCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-amberBrand text-navy-950 text-[10px] font-bold">
+                  {bookmarkCount}
+                </span>
+              )}
+            </Link>
             <Link
               href="/about"
               onClick={() => setMobileMenuOpen(false)}

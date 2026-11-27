@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import {
   getBlogsServerAsync,
   getBlogBySlugServerAsync,
@@ -79,6 +80,10 @@ export async function PUT(
     };
 
     await saveBlogServerAsync(updatedBlog);
+    try {
+      revalidatePath('/');
+      revalidatePath('/admin');
+    } catch {}
     return NextResponse.json(updatedBlog);
   } catch (err) {
     return NextResponse.json({ error: 'Failed to update blog', details: String(err) }, { status: 500 });

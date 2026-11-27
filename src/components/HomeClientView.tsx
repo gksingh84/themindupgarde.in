@@ -51,13 +51,35 @@ export function HomeClientView({
   const { showToast } = useToast();
 
   useEffect(() => {
+    // 1. Immediately check if there is an authoritative cached hero post from previous session/admin update
+    const cachedHero = ClientStorage.getCachedHeroPost();
     const merged = ClientStorage.getMergedBlogs(initialBlogs);
     setBlogs(merged);
-    const updatedHero = merged.find((b) => b.featured) || merged.find((b) => b.id === featuredPost?.id || b.slug === featuredPost?.slug) || merged[0] || null;
-    setHeroPost(updatedHero);
 
-    // Fetch fresh articles from DynamoDB cloud database
-    fetch('/api/blogs')
+    let updatedHero: BlogPost | null = null;
+    if (cachedHero && merged.some((b) => b.id === cachedHero.id || b.slug === cachedHero.slug)) {
+      const match = merged.find((b) => b.id === cachedHero.id || b.slug === cachedHero.slug);
+      updatedHero = match ? { ...match, ...cachedHero } : cachedHero;
+    } else {
+      updatedHero =
+        merged.find((b) => b.featured) ||
+        merged.find((b) => b.id === featuredPost?.id || b.slug === featuredPost?.slug) ||
+        merged[0] ||
+        null;
+    }
+
+    if (updatedHero) {
+      setHeroPost(updatedHero);
+    }
+
+    // 2. Fetch fresh articles from DynamoDB cloud database in background
+    const storedCreds = ClientStorage.getDynamoCreds();
+    const headers: Record<string, string> = {};
+    if (storedCreds) {
+      headers['x-dynamo-creds'] = JSON.stringify(storedCreds);
+    }
+
+    fetch('/api/blogs', { headers })
       .then((res) => (res.ok ? res.json() : null))
       .then((cloudBlogs) => {
         if (Array.isArray(cloudBlogs) && cloudBlogs.length > 0) {
@@ -68,7 +90,10 @@ export function HomeClientView({
             freshMerged.find((b) => b.id === featuredPost?.id || b.slug === featuredPost?.slug) ||
             freshMerged[0] ||
             null;
-          setHeroPost(freshHero);
+          if (freshHero) {
+            setHeroPost(freshHero);
+            ClientStorage.setCachedHeroPost(freshHero);
+          }
         }
       })
       .catch(() => {});

@@ -30,7 +30,17 @@ export const ClientStorage = {
       isBookmarked = true;
     }
     localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
+    try {
+      window.dispatchEvent(new Event('tmu_bookmarks_updated'));
+    } catch {}
     return isBookmarked;
+  },
+  clearAllBookmarks(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.removeItem(BOOKMARKS_KEY);
+      window.dispatchEvent(new Event('tmu_bookmarks_updated'));
+    } catch {}
   },
   isBookmarked(slug: string): boolean {
     return this.getBookmarks().includes(slug);
@@ -281,5 +291,28 @@ export const ClientStorage = {
   setDynamoCreds(creds: { tableName: string; region: string; accessKeyId: string; secretAccessKey: string }): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem('tmu_dynamo_creds', JSON.stringify(creds));
+  },
+
+  // Cached Hero Post to prevent flash on page refresh
+  getCachedHeroPost(): BlogPost | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const data = localStorage.getItem('tmu_cached_hero_post');
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  },
+  setCachedHeroPost(post: BlogPost): void {
+    if (typeof window === 'undefined' || !post) return;
+    try {
+      localStorage.setItem('tmu_cached_hero_post', JSON.stringify(post));
+    } catch {}
+  },
+  clearCachedHeroPost(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.removeItem('tmu_cached_hero_post');
+    } catch {}
   },
 };
