@@ -418,6 +418,11 @@ export function HomeClientView({
                     <img
                       src={post.coverImage}
                       alt={post.title}
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.onerror = null;
+                        target.src = '/images/financial-independence.svg';
+                      }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   </div>

@@ -14,8 +14,13 @@ export const revalidate = 0;
 function stripContent(b: BlogPost): BlogPost {
   if (!b) return b;
   const { content, ...rest } = b;
+  let coverImage = b.coverImage;
+  if (coverImage && coverImage.startsWith('data:image')) {
+    coverImage = `/api/blogs/${encodeURIComponent(b.id)}/cover`;
+  }
   return {
     ...rest,
+    coverImage,
     content: '',
   };
 }

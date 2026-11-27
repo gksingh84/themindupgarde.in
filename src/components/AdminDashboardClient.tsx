@@ -864,23 +864,23 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
       {activeTab === 'articles' && (
         <div className="space-y-4">
           {/* Search and Filters Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-navy-900 p-4 rounded-2xl border border-slate-200 dark:border-navy-700 shadow-sm">
-            <div className="relative w-full sm:w-56 lg:w-64 shrink">
+          <div className="flex flex-col xl:flex-row items-center justify-between gap-2.5 bg-white dark:bg-navy-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-navy-700 shadow-sm overflow-hidden">
+            <div className="relative w-full xl:w-56 shrink">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search articles by title or author..."
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-xs text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
+                className="w-full pl-9 pr-3 py-1.5 sm:py-2 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-xs text-navy-800 dark:text-offwhite focus:outline-none focus:border-amberBrand"
               />
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto flex-wrap lg:flex-nowrap">
+            <div className="flex items-center gap-1.5 w-full xl:w-auto flex-wrap sm:flex-nowrap justify-start xl:justify-end">
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-semibold text-navy-800 dark:text-offwhite cursor-pointer"
+                className="px-2 py-1.5 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-semibold text-navy-800 dark:text-offwhite cursor-pointer"
               >
                 <option value="all">All Statuses</option>
                 <option value="published">Published</option>
@@ -891,7 +891,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-32 px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-semibold text-navy-800 dark:text-offwhite truncate cursor-pointer"
+                className="w-24 sm:w-28 px-2 py-1.5 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-semibold text-navy-800 dark:text-offwhite truncate cursor-pointer"
                 title="Filter by Domain"
               >
                 <option value="all">All Domains</option>
@@ -905,7 +905,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
               <button
                 onClick={fetchFreshBlogs}
                 disabled={isRefreshing}
-                className="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite hover:text-amberBrand transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                className="px-2 py-1.5 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite hover:text-amberBrand transition-colors flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
                 title="Refresh latest views, likes & articles"
               >
                 <RefreshCw className={`w-3.5 h-3.5 text-amberBrand ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -915,7 +915,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
               <button
                 onClick={handleSyncToCloud}
                 disabled={isSyncingCloud}
-                className="px-2.5 py-2 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                className="px-2 py-1.5 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white transition-all flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
                 title="Sync all articles to AWS DynamoDB (makes articles identical on Desktop, iPhone & all devices)"
               >
                 <CloudUpload className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin' : ''}`} />
@@ -927,7 +927,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                   ClientStorage.exportBlogsJson(blogs);
                   showToast('Exported active articles to blogs.json!', 'success');
                 }}
-                className="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite hover:text-amberBrand transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-2 py-1.5 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite hover:text-amberBrand transition-colors flex items-center gap-1 cursor-pointer shrink-0"
                 title="Backup / Export articles as blogs.json"
               >
                 <Download className="w-3.5 h-3.5 text-amberBrand" />
@@ -943,7 +943,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                     window.location.reload();
                   }
                 }}
-                className="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite hover:text-amberBrand transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-2 py-1.5 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs font-bold text-navy-800 dark:text-offwhite hover:text-amberBrand transition-colors flex items-center gap-1 cursor-pointer shrink-0"
                 title="Sync / Refresh to match live server"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-amberBrand" />
@@ -979,7 +979,16 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 dark:bg-navy-950 shrink-0 border border-slate-200 dark:border-navy-800">
-                              <img src={blog.coverImage} alt={blog.title} className="w-full h-full object-cover" />
+                              <img
+                                src={blog.coverImage}
+                                alt={blog.title}
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.onerror = null;
+                                  target.src = '/images/financial-independence.svg';
+                                }}
+                                className="w-full h-full object-cover"
+                              />
                             </div>
                             <div className="space-y-0.5 max-w-sm">
                               <div className="flex items-center gap-1.5 flex-wrap">

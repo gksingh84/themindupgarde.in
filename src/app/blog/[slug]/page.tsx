@@ -15,6 +15,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     };
   }
 
+  const coverUrl = post.coverImage && post.coverImage.startsWith('data:')
+    ? `https://themindupgrade.in/api/blogs/${encodeURIComponent(post.id)}/cover`
+    : (post.coverImage || 'https://themindupgrade.in/images/financial-independence.svg');
+
   return {
     title: `${post.title} | The Mind Upgrade`,
     description: post.excerpt,
@@ -22,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: post.title,
       description: post.excerpt,
       url: `https://themindupgrade.in/blog/${post.slug}`,
-      images: [{ url: post.coverImage }],
+      images: [{ url: coverUrl }],
       type: 'article',
       publishedTime: post.publishedAt,
       authors: [post.author?.name || 'Gaurav Kumar Singh'],
@@ -31,14 +35,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       card: 'summary_large_image',
       title: post.title,
       description: post.excerpt,
-      images: [post.coverImage],
+      images: [coverUrl],
     },
   };
 }
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = (await getBlogBySlugServerAsync(slug)) || null;
+  let post = (await getBlogBySlugServerAsync(slug)) || null;
+
+  if (post && post.coverImage && post.coverImage.startsWith('data:')) {
+    post = {
+      ...post,
+      coverImage: `/api/blogs/${encodeURIComponent(post.id)}/cover`,
+    };
+  }
 
   const allBlogs = (await getBlogsServerAsync()).filter((b) => b.status === 'published' && b.slug !== slug);
   let relatedPosts: BlogPost[] = [];

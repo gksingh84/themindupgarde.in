@@ -83,6 +83,11 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
           <img
             src={post.coverImage}
             alt={post.title}
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = '/images/financial-independence.svg';
+            }}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
           />
           <div className="absolute bottom-4 left-4 z-10">
@@ -193,6 +198,11 @@ export function BlogCard({ post, featured = false }: BlogCardProps) {
           <img
             src={post.coverImage}
             alt={post.title}
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = '/images/financial-independence.svg';
+            }}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           />
 

@@ -40,8 +40,13 @@ export async function GET(request: Request) {
   if (!includeContent) {
     blogs = blogs.map((b) => {
       const { content, ...rest } = b;
+      let coverImage = b.coverImage;
+      if (coverImage && coverImage.startsWith('data:image')) {
+        coverImage = `/api/blogs/${encodeURIComponent(b.id)}/cover`;
+      }
       return {
         ...rest,
+        coverImage,
         content: '',
       };
     });

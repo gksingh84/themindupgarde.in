@@ -294,10 +294,18 @@ export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[] | null> {
           b.subtitle ||
           (b.content ? b.content.replace(/<[^>]*>/g, '').trim().slice(0, 180) + '...' : '');
 
-        const coverImage =
-          b.coverImage && b.coverImage.startsWith('data:image') && b.coverImage.length > 50000
-            ? '/images/financial-independence.svg'
-            : (b.coverImage || '/images/financial-independence.svg');
+        let coverImage = b.coverImage;
+        if (coverImage && coverImage.startsWith('data:image')) {
+          // Serve through lightweight binary image endpoint to keep bulk payload ultra-lightweight (<60KB)
+          coverImage = `/api/blogs/${encodeURIComponent(b.id)}/cover`;
+        } else if (!coverImage) {
+          const cat = (b.category || '').toLowerCase();
+          if (cat.includes('insurance')) coverImage = '/images/insurance.svg';
+          else if (cat.includes('bank') || cat.includes('finance') || cat.includes('money') || cat.includes('wealth')) coverImage = '/images/banking.svg';
+          else if (cat.includes('psychology') || cat.includes('mind') || cat.includes('habit')) coverImage = '/images/mental-models.svg';
+          else if (cat.includes('deep-work') || cat.includes('productivity')) coverImage = '/images/deep-work.svg';
+          else coverImage = '/images/financial-independence.svg';
+        }
 
         return {
           ...b,
@@ -383,11 +391,21 @@ export async function saveBlogToDynamoDB(blog: BlogPost): Promise<boolean> {
   if (!isDynamoDBConfigured() || !blog || !blog.id) return false;
 
   try {
+    let coverImage = blog.coverImage;
+    // Guard: Never overwrite a stored base64 or valid image with the /cover route proxy URL
+    if (coverImage && coverImage.startsWith('/api/blogs/') && coverImage.endsWith('/cover')) {
+      const existing = await getBlogByIdOrSlugFromDynamoDB(blog.id);
+      if (existing && existing.coverImage && !existing.coverImage.startsWith('/api/blogs/')) {
+        coverImage = existing.coverImage;
+      }
+    }
+
     const client = getDynamoDBClient();
     const command = new PutCommand({
       TableName: getDynamoTableName(),
       Item: {
         ...blog,
+        coverImage: coverImage || '/images/financial-independence.svg',
         type: 'blog',
         updatedAt: new Date().toISOString(),
       },

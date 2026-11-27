@@ -546,6 +546,11 @@ export function BlogPostClientView({
             <img
               src={post.coverImage}
               alt={post.title}
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = '/images/financial-independence.svg';
+              }}
               className="w-full h-auto max-h-[520px] object-cover"
             />
           </div>
