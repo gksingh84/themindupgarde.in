@@ -240,39 +240,21 @@ export async function getBlogBySlugServerAsync(slug: string): Promise<BlogPost |
   if (!slug) return undefined;
   const decoded = decodeURIComponent(slug).toLowerCase().trim();
 
-  // 1. Fast path: check memory cache first (0ms latency, zero DynamoDB round trips)
-  const blogs = await getBlogsServerAsync();
-  const match = blogs.find((b) => {
-    const bSlug = (b.slug || '').toLowerCase().trim();
-    const bId = (b.id || '').toLowerCase().trim();
-    if (bSlug === decoded || bId === decoded) return true;
-    if (
-      decoded === 'pure-term-life-insurance-vs-endowment-ulip' &&
-      (b.id === '7' || bSlug === 'pure-term-life-insurance-vs-endowment-ulip')
-    ) {
-      return true;
-    }
-    if (
-      decoded === 'checklist-to-compare-term-insurance-plans-in-india' &&
-      (b.id === '8' || bSlug === 'checklist-to-compare-term-insurance-plans-in-india')
-    ) {
-      return true;
-    }
-    return false;
-  });
-  if (match) return match;
-
-  // 2. Fallback to direct query if not in current cache
+  // 1. Direct query to DynamoDB for full post with content (O(1) GetItem, gets complete article content)
   if (isDynamoDBConfigured()) {
     try {
       const fromDb = await getBlogByIdOrSlugFromDynamoDB(decoded);
-      if (fromDb) return fromDb;
+      if (fromDb && (fromDb.content || fromDb.title)) return fromDb;
     } catch (e) {
       console.warn('DynamoDB getBlog warning:', e);
     }
   }
 
-  return getBlogBySlugServer(slug);
+  // 2. Fallback to local blogs.json with full content
+  const local = getBlogBySlugServer(slug);
+  if (local) return local;
+
+  return undefined;
 }
 
 /**

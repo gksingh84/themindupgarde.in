@@ -1,5 +1,5 @@
 import React from 'react';
-import { getBlogsServerAsync, getBlogsServer } from '@/lib/blog-service';
+import { getBlogsServerAsync, getBlogsServer, getBlogBySlugServerAsync } from '@/lib/blog-service';
 import { BlogEditorClient } from '@/components/BlogEditorClient';
 import { BlogPost } from '@/types/blog';
 
@@ -13,18 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       decodedId = (id || '').trim();
     }
 
-    let blogs: BlogPost[] = [];
-    try {
-      blogs = await getBlogsServerAsync();
-    } catch {
-      blogs = getBlogsServer();
-    }
-
-    const blog = blogs.find(
-      (b) =>
-        b.id === decodedId ||
-        (b.slug && b.slug.toLowerCase() === decodedId.toLowerCase())
-    );
+    const blog = (await getBlogBySlugServerAsync(decodedId)) || null;
     if (!blog) return { title: 'Edit Article | Admin' };
     return { title: `Edit: ${blog.title} | Admin` };
   } catch {
@@ -45,21 +34,21 @@ export default async function EditBlogPage({ params }: { params: Promise<{ id: s
       decodedId = rawId.trim();
     }
 
-    let blogs: BlogPost[] = [];
-    try {
-      blogs = await getBlogsServerAsync();
-    } catch {
-      blogs = getBlogsServer();
+    if (decodedId) {
+      blog = (await getBlogBySlugServerAsync(decodedId)) || null;
     }
 
-    blog =
-      blogs.find(
-        (b) =>
-          b.id === decodedId ||
-          (b.slug && b.slug.toLowerCase() === decodedId.toLowerCase()) ||
-          (b.id === '7' && (decodedId === '7' || decodedId.includes('pure-term'))) ||
-          (b.id === '8' && (decodedId === '8' || decodedId.includes('checklist')))
-      ) || null;
+    if (!blog && decodedId) {
+      const blogs = getBlogsServer();
+      blog =
+        blogs.find(
+          (b) =>
+            b.id === decodedId ||
+            (b.slug && b.slug.toLowerCase() === decodedId.toLowerCase()) ||
+            (b.id === '7' && (decodedId === '7' || decodedId.includes('pure-term'))) ||
+            (b.id === '8' && (decodedId === '8' || decodedId.includes('checklist')))
+        ) || null;
+    }
   } catch (err) {
     console.warn('EditBlogPage params resolution notice:', err);
   }

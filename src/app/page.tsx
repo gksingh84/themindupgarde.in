@@ -6,9 +6,19 @@ import {
   getFeaturedArticles,
 } from '@/lib/blog-service';
 import { HomeClientView } from '@/components/HomeClientView';
+import { BlogPost } from '@/types/blog';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+function stripContent(b: BlogPost): BlogPost {
+  if (!b) return b;
+  const { content, ...rest } = b;
+  return {
+    ...rest,
+    content: '',
+  };
+}
 
 export default async function HomePage() {
   const allBlogs = await getBlogsServerAsync(true);
@@ -21,10 +31,10 @@ export default async function HomePage() {
 
   return (
     <HomeClientView
-      initialBlogs={publishedBlogs}
-      featuredPost={featuredPost}
-      editorsPicks={editorsPicks}
-      popularPosts={popularPosts}
+      initialBlogs={publishedBlogs.map(stripContent)}
+      featuredPost={stripContent(featuredPost)}
+      editorsPicks={editorsPicks.map(stripContent)}
+      popularPosts={popularPosts.map(stripContent)}
     />
   );
 }

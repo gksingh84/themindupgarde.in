@@ -35,6 +35,18 @@ export async function GET(request: Request) {
     );
   }
 
+  // Strip heavy HTML and raw base64 content from bulk API listing unless specifically requested
+  const includeContent = searchParams.get('includeContent') === 'true';
+  if (!includeContent) {
+    blogs = blogs.map((b) => {
+      const { content, ...rest } = b;
+      return {
+        ...rest,
+        content: '',
+      };
+    });
+  }
+
   return NextResponse.json(blogs);
 }
 

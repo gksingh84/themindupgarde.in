@@ -39,6 +39,13 @@ export async function GET(request: Request) {
 
   try {
     const cloudBlogs = await getAllBlogsFromDynamoDB();
+    const lightweightBlogs = (cloudBlogs || []).map((b) => {
+      const { content, ...rest } = b;
+      return {
+        ...rest,
+        content: '',
+      };
+    });
     return NextResponse.json({
       configured: true,
       tableName,
@@ -46,7 +53,7 @@ export async function GET(request: Request) {
       hasAccessKey,
       hasSecretKey,
       count: cloudBlogs ? cloudBlogs.length : 0,
-      blogs: cloudBlogs || [],
+      blogs: lightweightBlogs,
     });
   } catch (error) {
     return NextResponse.json(

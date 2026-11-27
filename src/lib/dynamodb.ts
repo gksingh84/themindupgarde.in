@@ -287,26 +287,42 @@ export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[] | null> {
 
     return (allItems as BlogPost[])
       .filter((b) => isBlogItem(b))
-      .map((b) => ({
-        ...b,
-        title: b.title || 'Untitled Article',
-        slug: b.slug || `post-${b.id}`,
-        category: b.category || 'General',
-        subcategory: b.subcategory || '',
-        tags: Array.isArray(b.tags) ? b.tags : [],
-        author: b.author && typeof b.author === 'object' ? {
-          name: b.author.name || 'Gaurav Kumar Singh',
-          avatar: b.author.avatar || '',
-          role: b.author.role || 'Editor'
-        } : {
-          name: 'Gaurav Kumar Singh',
-          avatar: '',
-          role: 'Editor'
-        },
-        views: typeof b.views === 'number' ? b.views : 0,
-        likes: typeof b.likes === 'number' ? b.likes : 0,
-        status: b.status || 'published',
-      }));
+      .map((b) => {
+        // Strip heavy HTML and raw base64 data to keep bulk listing scans ultra-lightweight (<60KB total)
+        const excerpt =
+          b.excerpt ||
+          b.subtitle ||
+          (b.content ? b.content.replace(/<[^>]*>/g, '').trim().slice(0, 180) + '...' : '');
+
+        const coverImage =
+          b.coverImage && b.coverImage.startsWith('data:image') && b.coverImage.length > 50000
+            ? '/images/financial-independence.svg'
+            : (b.coverImage || '/images/financial-independence.svg');
+
+        return {
+          ...b,
+          content: '', // Omit heavy content from bulk listing scan to prevent AWS Lambda 6MB payload overflow (HTTP 413)
+          excerpt,
+          coverImage,
+          title: b.title || 'Untitled Article',
+          slug: b.slug || `post-${b.id}`,
+          category: b.category || 'General',
+          subcategory: b.subcategory || '',
+          tags: Array.isArray(b.tags) ? b.tags : [],
+          author: b.author && typeof b.author === 'object' ? {
+            name: b.author.name || 'Gaurav Kumar Singh',
+            avatar: b.author.avatar || '',
+            role: b.author.role || 'Editor'
+          } : {
+            name: 'Gaurav Kumar Singh',
+            avatar: '',
+            role: 'Editor'
+          },
+          views: typeof b.views === 'number' ? b.views : 0,
+          likes: typeof b.likes === 'number' ? b.likes : 0,
+          status: b.status || 'published',
+        };
+      });
   } catch (error) {
     console.warn('DynamoDB Scan Notice (will use local fallback):', error);
     return null;
