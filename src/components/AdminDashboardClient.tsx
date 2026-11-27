@@ -40,7 +40,9 @@ import {
   CloudUpload,
   Database,
   Cloud,
-  Star
+  Star,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { DynamoDBSetupModal } from '@/components/DynamoDBSetupModal';
@@ -61,6 +63,10 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isDefaultPassword, setIsDefaultPassword] = useState(true);
+
+  // Pagination for Articles (Max 15 per page)
+  const [articlesPage, setArticlesPage] = useState(1);
+  const articlesTableRef = React.useRef<HTMLDivElement>(null);
 
   // Subscribers state
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
@@ -516,6 +522,50 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
+  // Reset pagination to page 1 whenever search query, status or domain filter changes
+  useEffect(() => {
+    setArticlesPage(1);
+  }, [searchQuery, statusFilter, categoryFilter]);
+
+  // Articles Pagination Logic (Max 15 per page)
+  const ARTICLES_PER_PAGE = 15;
+  const totalArticlesPages = Math.max(1, Math.ceil(filteredBlogs.length / ARTICLES_PER_PAGE));
+  const currentArticlesPage = Math.min(articlesPage, totalArticlesPages);
+  const startArticleIndex = (currentArticlesPage - 1) * ARTICLES_PER_PAGE;
+  const paginatedBlogs = filteredBlogs.slice(startArticleIndex, startArticleIndex + ARTICLES_PER_PAGE);
+
+  const handlePageChange = (newPage: number) => {
+    setArticlesPage(newPage);
+    if (articlesTableRef.current) {
+      articlesTableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const getPageNumbers = () => {
+    if (totalArticlesPages <= 7) {
+      return Array.from({ length: totalArticlesPages }, (_, i) => i + 1);
+    }
+    const pages: (number | string)[] = [];
+    if (currentArticlesPage <= 4) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalArticlesPages);
+    } else if (currentArticlesPage >= totalArticlesPages - 3) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalArticlesPages - 4; i <= totalArticlesPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push('...');
+      pages.push(currentArticlesPage - 1);
+      pages.push(currentArticlesPage);
+      pages.push(currentArticlesPage + 1);
+      pages.push('...');
+      pages.push(totalArticlesPages);
+    }
+    return pages;
+  };
+
   // Filtered Subscribers
   const filteredSubscribers = (subscribers || []).filter((s) => {
     if (!s) return false;
@@ -903,7 +953,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
           </div>
 
           {/* Articles Table */}
-          <div className="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200 dark:border-navy-700 overflow-hidden shadow-sm">
+          <div ref={articlesTableRef} className="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200 dark:border-navy-700 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-navy-950 border-b border-slate-200 dark:border-navy-800 text-slateBrand dark:text-slate-400 font-bold uppercase tracking-wider">
@@ -924,7 +974,7 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                       </td>
                     </tr>
                   ) : (
-                    filteredBlogs.map((blog) => (
+                    paginatedBlogs.map((blog) => (
                       <tr key={blog.id} className="hover:bg-slate-50/60 dark:hover:bg-navy-800/40 transition-colors">
                         <td className="p-4">
                           <div className="flex items-center gap-3">
@@ -1035,6 +1085,82 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Pagination Controls (Max 15 per page) */}
+            <div className="border-t border-slate-200 dark:border-navy-800 px-4 py-3.5 bg-slate-50/70 dark:bg-navy-950/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="text-charcoal-500 dark:text-slate-400 font-medium">
+                {filteredBlogs.length === 0 ? (
+                  'No articles to display'
+                ) : (
+                  <>
+                    Showing{' '}
+                    <span className="font-bold text-navy-800 dark:text-offwhite">
+                      {startArticleIndex + 1}
+                    </span>{' '}
+                    to{' '}
+                    <span className="font-bold text-navy-800 dark:text-offwhite">
+                      {Math.min(startArticleIndex + ARTICLES_PER_PAGE, filteredBlogs.length)}
+                    </span>{' '}
+                    of{' '}
+                    <span className="font-bold text-navy-800 dark:text-offwhite">
+                      {filteredBlogs.length}
+                    </span>{' '}
+                    articles
+                    {totalArticlesPages > 1 && (
+                      <span className="ml-1 text-charcoal-400 dark:text-slate-500">
+                        • Page {currentArticlesPage} of {totalArticlesPages}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {totalArticlesPages > 1 && (
+                <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                  <button
+                    onClick={() => handlePageChange(Math.max(1, currentArticlesPage - 1))}
+                    disabled={currentArticlesPage === 1}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-navy-700 bg-white dark:bg-navy-900 text-charcoal-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-800 transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 cursor-pointer font-semibold shadow-2xs"
+                    title="Previous page"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Prev</span>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {getPageNumbers().map((p, idx) =>
+                      typeof p === 'number' ? (
+                        <button
+                          key={p}
+                          onClick={() => handlePageChange(p)}
+                          className={`min-w-8 h-8 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            currentArticlesPage === p
+                              ? 'bg-navy-800 text-white dark:bg-amberBrand dark:text-navy-950 shadow-xs'
+                              : 'bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 text-charcoal-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-800'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ) : (
+                        <span key={`ellipsis-${idx}`} className="px-1.5 text-charcoal-400 dark:text-slate-500 font-bold">
+                          ...
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => handlePageChange(Math.min(totalArticlesPages, currentArticlesPage + 1))}
+                    disabled={currentArticlesPage === totalArticlesPages}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-navy-700 bg-white dark:bg-navy-900 text-charcoal-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-800 transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 cursor-pointer font-semibold shadow-2xs"
+                    title="Next page"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
