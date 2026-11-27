@@ -8,7 +8,7 @@ import ImageExtension from '@tiptap/extension-image';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
-import { Node, Extension, mergeAttributes } from '@tiptap/core';
+import { Node, Extension, Mark, mergeAttributes } from '@tiptap/core';
 
 import {
   Bold,
@@ -44,6 +44,8 @@ import {
   ArrowLeftRight,
   Grid3X3,
   Sliders,
+  Type,
+  Check,
 } from 'lucide-react';
 
 // Custom TipTap Callout Node for editorial Tip, Warning, and Key Insight cards
@@ -229,6 +231,186 @@ const CustomTableHeader = TableHeader.extend({
   },
 });
 
+// Custom TipTap Mark for Font Family
+const FontFamilyExtension = Mark.create({
+  name: 'fontFamily',
+
+  addAttributes() {
+    return {
+      fontFamily: {
+        default: null,
+        parseHTML: (element) => element.style?.fontFamily?.replace(/['"]+/g, '') || null,
+        renderHTML: (attributes) => {
+          if (!attributes.fontFamily) {
+            return {};
+          }
+          return {
+            style: `font-family: ${attributes.fontFamily};`,
+          };
+        },
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'span[style*="font-family"]',
+        getAttrs: (element) => {
+          const fontFamily = (element as HTMLElement).style?.fontFamily;
+          if (!fontFamily) return false;
+          return { fontFamily };
+        },
+      },
+      {
+        style: 'font-family',
+        getAttrs: (value) => {
+          if (!value) return false;
+          return { fontFamily: value };
+        },
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes), 0];
+  },
+});
+
+// Custom TipTap Mark for Font Size
+const FontSizeExtension = Mark.create({
+  name: 'fontSize',
+
+  addAttributes() {
+    return {
+      fontSize: {
+        default: null,
+        parseHTML: (element) => element.style?.fontSize || null,
+        renderHTML: (attributes) => {
+          if (!attributes.fontSize) {
+            return {};
+          }
+          return {
+            style: `font-size: ${attributes.fontSize};`,
+          };
+        },
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'span[style*="font-size"]',
+        getAttrs: (element) => {
+          const fontSize = (element as HTMLElement).style?.fontSize;
+          if (!fontSize) return false;
+          return { fontSize };
+        },
+      },
+      {
+        style: 'font-size',
+        getAttrs: (value) => {
+          if (!value) return false;
+          return { fontSize: value };
+        },
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes), 0];
+  },
+});
+
+export const BLOG_FONT_FAMILIES = [
+  {
+    name: 'Default (System Sans)',
+    shortName: 'Default',
+    value: 'default',
+    fontFamily: 'inherit',
+    category: 'System',
+    description: 'Site default clean editorial typography',
+  },
+  {
+    name: 'Inter',
+    shortName: 'Inter',
+    value: 'Inter, system-ui, -apple-system, sans-serif',
+    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+    category: 'Modern Sans',
+    description: 'Substack & Medium style ultra-clean reading',
+  },
+  {
+    name: 'Merriweather',
+    shortName: 'Merriweather',
+    value: 'Merriweather, Georgia, serif',
+    fontFamily: 'Merriweather, Georgia, serif',
+    category: 'Editorial Serif',
+    description: 'Screen-crafted #1 longform reading serif',
+  },
+  {
+    name: 'Playfair Display',
+    shortName: 'Playfair',
+    value: '"Playfair Display", Georgia, serif',
+    fontFamily: '"Playfair Display", Georgia, serif',
+    category: 'Luxury Serif',
+    description: 'High-contrast headline & pull-quote elegance',
+  },
+  {
+    name: 'Lora',
+    shortName: 'Lora',
+    value: 'Lora, Georgia, serif',
+    fontFamily: 'Lora, Georgia, serif',
+    category: 'Literary Serif',
+    description: 'Contemporary essay & storytelling serif',
+  },
+  {
+    name: 'DM Serif Display',
+    shortName: 'DM Serif',
+    value: '"DM Serif Display", Georgia, serif',
+    fontFamily: '"DM Serif Display", Georgia, serif',
+    category: 'Display Serif',
+    description: 'Bold distinctive publication styling',
+  },
+  {
+    name: 'Roboto',
+    shortName: 'Roboto',
+    value: 'Roboto, Arial, sans-serif',
+    fontFamily: 'Roboto, Arial, sans-serif',
+    category: 'Clean Sans',
+    description: 'Crisp, modern tech & analytical sans',
+  },
+  {
+    name: 'Georgia',
+    shortName: 'Georgia',
+    value: 'Georgia, Cambria, serif',
+    fontFamily: 'Georgia, Cambria, serif',
+    category: 'Classic Serif',
+    description: 'Universally supported timeless book serif',
+  },
+  {
+    name: 'Fira Code',
+    shortName: 'Fira Code',
+    value: '"Fira Code", monospace',
+    fontFamily: '"Fira Code", monospace',
+    category: 'Monospace',
+    description: 'Formulas, financial data & code snippets',
+  },
+];
+
+export const BLOG_FONT_SIZES = [
+  { label: 'Default', value: 'default', px: 16, tag: 'Default' },
+  { label: '12px', value: '12px', px: 12, tag: 'Footnote' },
+  { label: '14px', value: '14px', px: 14, tag: 'Caption' },
+  { label: '16px', value: '16px', px: 16, tag: 'Standard' },
+  { label: '18px', value: '18px', px: 18, tag: 'Lead Body' },
+  { label: '20px', value: '20px', px: 20, tag: 'Subhead' },
+  { label: '24px', value: '24px', px: 24, tag: 'Heading 3' },
+  { label: '28px', value: '28px', px: 28, tag: 'Heading 2' },
+  { label: '32px', value: '32px', px: 32, tag: 'Heading 1' },
+  { label: '36px', value: '36px', px: 36, tag: 'Hero Title' },
+];
+
 interface TipTapEditorProps {
   content: string;
   onChange: (html: string) => void;
@@ -251,10 +433,17 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
   const [customColWidthInput, setCustomColWidthInput] = useState('180');
   const [applyRowToAll, setApplyRowToAll] = useState(false);
 
+  // Typography Controls State
+  const [showFontMenu, setShowFontMenu] = useState(false);
+  const [showFontSizeMenu, setShowFontSizeMenu] = useState(false);
+  const savedSelectionRef = React.useRef<{ from: number; to: number } | null>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
+      FontFamilyExtension,
+      FontSizeExtension,
       Callout,
       IndentExtension,
       Table.configure({
@@ -295,6 +484,140 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
       editor.commands.setContent(content, { emitUpdate: false });
     }
   }, [editor, content]);
+
+  // Typography helpers
+  const recordSelection = () => {
+    if (editor) {
+      const { from, to } = editor.state.selection;
+      savedSelectionRef.current = { from, to };
+    }
+  };
+
+  const activeFontFamilyAttr = editor?.getAttributes('fontFamily')?.fontFamily as string | undefined;
+  const currentFontFamily = activeFontFamilyAttr
+    ? BLOG_FONT_FAMILIES.find((f) =>
+        f.value.toLowerCase().includes(activeFontFamilyAttr.toLowerCase()) ||
+        activeFontFamilyAttr.toLowerCase().includes(f.shortName.toLowerCase())
+      ) || {
+        name: activeFontFamilyAttr,
+        shortName: activeFontFamilyAttr,
+        value: activeFontFamilyAttr,
+        fontFamily: activeFontFamilyAttr,
+        category: 'Custom',
+        description: 'Applied font family',
+      }
+    : BLOG_FONT_FAMILIES[0];
+
+  const activeFontSizeAttr = editor?.getAttributes('fontSize')?.fontSize as string | undefined;
+  const currentFontSize = activeFontSizeAttr || '16px';
+
+  const applyFontFamily = (familyValue: string) => {
+    if (!editor) return;
+    if (savedSelectionRef.current) {
+      editor.chain().focus().setTextSelection(savedSelectionRef.current).run();
+    } else {
+      editor.chain().focus().run();
+    }
+
+    if (!familyValue || familyValue === 'default' || familyValue === 'inherit') {
+      if (editor.state.selection.empty) {
+        const { $from } = editor.state.selection;
+        const start = $from.start();
+        const end = $from.end();
+        if (end > start) {
+          editor.chain().focus().setTextSelection({ from: start, to: end }).unsetMark('fontFamily').run();
+          setShowFontMenu(false);
+          return;
+        }
+      }
+      editor.chain().focus().unsetMark('fontFamily').run();
+      setShowFontMenu(false);
+      return;
+    }
+
+    if (editor.state.selection.empty) {
+      const { $from } = editor.state.selection;
+      const start = $from.start();
+      const end = $from.end();
+      if (end > start) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection({ from: start, to: end })
+          .setMark('fontFamily', { fontFamily: familyValue })
+          .run();
+        setShowFontMenu(false);
+        return;
+      }
+    }
+
+    editor.chain().focus().setMark('fontFamily', { fontFamily: familyValue }).run();
+    setShowFontMenu(false);
+  };
+
+  const applyFontSize = (sizeValue: string) => {
+    if (!editor) return;
+    if (savedSelectionRef.current) {
+      editor.chain().focus().setTextSelection(savedSelectionRef.current).run();
+    } else {
+      editor.chain().focus().run();
+    }
+
+    if (!sizeValue || sizeValue === 'default' || sizeValue === 'inherit') {
+      if (editor.state.selection.empty) {
+        const { $from } = editor.state.selection;
+        const start = $from.start();
+        const end = $from.end();
+        if (end > start) {
+          editor.chain().focus().setTextSelection({ from: start, to: end }).unsetMark('fontSize').run();
+          setShowFontSizeMenu(false);
+          return;
+        }
+      }
+      editor.chain().focus().unsetMark('fontSize').run();
+      setShowFontSizeMenu(false);
+      return;
+    }
+
+    if (editor.state.selection.empty) {
+      const { $from } = editor.state.selection;
+      const start = $from.start();
+      const end = $from.end();
+      if (end > start) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection({ from: start, to: end })
+          .setMark('fontSize', { fontSize: sizeValue })
+          .run();
+        setShowFontSizeMenu(false);
+        return;
+      }
+    }
+
+    editor.chain().focus().setMark('fontSize', { fontSize: sizeValue }).run();
+    setShowFontSizeMenu(false);
+  };
+
+  const stepFontSize = (delta: number) => {
+    if (!editor) return;
+    if (savedSelectionRef.current) {
+      editor.chain().focus().setTextSelection(savedSelectionRef.current).run();
+    } else {
+      editor.chain().focus().run();
+    }
+    const currentAttr = editor.getAttributes('fontSize').fontSize as string | undefined;
+    const currentPx = currentAttr ? parseInt(currentAttr, 10) : 16;
+    const validSizes = [12, 14, 16, 18, 20, 24, 28, 32, 36];
+
+    let nextPx: number;
+    if (delta > 0) {
+      nextPx = validSizes.find((s) => s > currentPx) || Math.min(48, currentPx + 2);
+    } else {
+      nextPx = [...validSizes].reverse().find((s) => s < currentPx) || Math.max(10, currentPx - 2);
+    }
+    applyFontSize(`${nextPx}px`);
+  };
 
   const setLink = () => {
     if (!editor) return;
@@ -669,6 +992,169 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
     <div className="rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 overflow-hidden shadow-sm flex flex-col h-[650px] sm:h-[720px] max-h-[82vh]">
       {/* Editor Toolbar - Sticky / Fixed at Top */}
       <div className="sticky top-0 z-30 shrink-0 p-2.5 sm:p-3 bg-slate-50/98 dark:bg-navy-950/98 backdrop-blur-md border-b border-slate-200 dark:border-navy-800 flex flex-wrap items-center gap-1 shadow-xs">
+        {/* Typography Controls: Font Style & Font Size */}
+        <div className="relative">
+          <button
+            type="button"
+            onMouseDown={recordSelection}
+            onClick={() => {
+              setShowFontMenu(!showFontMenu);
+              setShowFontSizeMenu(false);
+              setShowCardsMenu(false);
+            }}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
+              showFontMenu || activeFontFamilyAttr
+                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-amber-400'
+                : 'bg-white dark:bg-navy-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-navy-700 hover:bg-slate-100 dark:hover:bg-navy-800'
+            }`}
+            title="Font Style / Family (Inter, Merriweather, Playfair, Lora, etc.)"
+          >
+            <Type className="w-3.5 h-3.5 text-amberBrand shrink-0" />
+            <span className="max-w-[85px] sm:max-w-[110px] truncate" style={{ fontFamily: currentFontFamily.fontFamily }}>
+              {currentFontFamily.shortName}
+            </span>
+            <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${showFontMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showFontMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowFontMenu(false)} />
+              <div className="absolute left-0 mt-1.5 w-72 sm:w-80 max-h-80 overflow-y-auto p-2 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-xl z-50 flex flex-col gap-1 text-xs animate-in fade-in-50">
+                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-navy-800 flex items-center justify-between">
+                  <span>Editorial Typography</span>
+                  <span className="text-[10px] font-normal lowercase opacity-80">9 popular blog fonts</span>
+                </div>
+
+                {BLOG_FONT_FAMILIES.map((font) => {
+                  const isSelected = font.value === 'default'
+                    ? !activeFontFamilyAttr
+                    : activeFontFamilyAttr?.toLowerCase().includes(font.shortName.toLowerCase()) || activeFontFamilyAttr === font.value;
+
+                  return (
+                    <button
+                      key={font.name}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => applyFontFamily(font.value)}
+                      className={`w-full text-left p-2 rounded-lg flex items-center justify-between gap-2 transition-colors cursor-pointer group ${
+                        isSelected
+                          ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 font-bold'
+                          : 'hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-sm" style={{ fontFamily: font.fontFamily }}>
+                          {font.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                          {font.description}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 dark:bg-navy-800 text-slate-500 dark:text-slate-400">
+                          {font.category}
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-amberBrand shrink-0" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Font Size Selector */}
+        <div className="relative flex items-center">
+          <button
+            type="button"
+            onMouseDown={recordSelection}
+            onClick={() => {
+              setShowFontSizeMenu(!showFontSizeMenu);
+              setShowFontMenu(false);
+              setShowCardsMenu(false);
+            }}
+            className={`px-2.5 py-1.5 rounded-l-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 border border-r-0 ${
+              showFontSizeMenu || activeFontSizeAttr
+                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-amber-400'
+                : 'bg-white dark:bg-navy-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-navy-700 hover:bg-slate-100 dark:hover:bg-navy-800'
+            }`}
+            title="Font Size (12px to 36px)"
+          >
+            <span className="font-mono font-bold">{currentFontSize}</span>
+            <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${showFontSizeMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Quick step decrement/increment buttons */}
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              recordSelection();
+            }}
+            onClick={() => stepFontSize(-1)}
+            className="px-1.5 py-1.5 text-xs font-bold border-y border-slate-300 dark:border-navy-700 bg-white dark:bg-navy-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-800 transition-colors cursor-pointer"
+            title="Decrease Font Size (A-)"
+          >
+            A-
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              recordSelection();
+            }}
+            onClick={() => stepFontSize(1)}
+            className="px-1.5 py-1.5 rounded-r-lg text-xs font-bold border border-l-0 border-slate-300 dark:border-navy-700 bg-white dark:bg-navy-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-800 transition-colors cursor-pointer"
+            title="Increase Font Size (A+)"
+          >
+            A+
+          </button>
+
+          {showFontSizeMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowFontSizeMenu(false)} />
+              <div className="absolute left-0 mt-1.5 top-full w-56 max-h-72 overflow-y-auto p-2 rounded-xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 shadow-xl z-50 flex flex-col gap-1 text-xs animate-in fade-in-50">
+                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-navy-800">
+                  Font Sizes
+                </div>
+
+                {BLOG_FONT_SIZES.map((size) => {
+                  const isSelected = size.value === 'default'
+                    ? !activeFontSizeAttr
+                    : activeFontSizeAttr === size.value;
+
+                  return (
+                    <button
+                      key={size.value}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => applyFontSize(size.value)}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 font-bold'
+                          : 'hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      <span className="font-mono" style={{ fontSize: size.value === 'default' ? '14px' : Math.min(size.px, 20) + 'px' }}>
+                        {size.label}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                          {size.tag}
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-amberBrand shrink-0" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="w-px h-5 bg-slate-200 dark:bg-navy-800 mx-1" />
+
         {/* Formatting Controls */}
         <button
           type="button"
