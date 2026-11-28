@@ -2,7 +2,7 @@
  * The Mind Upgrade - WordPress XML Migration Engine
  * 
  * Reads WordPress WXR (XML export) files, parses posts, maps to TMU's BlogPost data model,
- * checks for existing blogs (skipping duplicates by slug, title, or ID), and inserts new articles
+ * checks for existing blogs (skipping duplicates by title, slug, or ID), and inserts new articles
  * into DynamoDB and the application's local database.
  * 
  * Usage:
@@ -136,16 +136,12 @@ function cleanWordPressContent(html = '') {
   if (!html) return '';
 
   let cleaned = html
-    // Remove Gutenberg block comments: <!-- wp:... --> and <!-- /wp:... -->
     .replace(/<!--\s*\/?wp:[^>]*-->/gi, '')
-    // Remove empty paragraphs
     .replace(/<p>\s*(?:&nbsp;|\s)*<\/p>/gi, '')
-    // Remove WordPress shortcodes like [caption ...]...[/caption]
     .replace(/\[caption[^\]]*\]([\s\S]*?)\[\/caption\]/gi, '$1')
     .replace(/\[\/?(gallery|embed|video|audio)[^\]]*\]/gi, '')
     .trim();
 
-  // If no HTML tags present at all, wrap double-newlines into paragraphs
   if (!cleaned.includes('<p>') && !cleaned.includes('<div>')) {
     cleaned = cleaned
       .split(/\n\s*\n/)
@@ -174,7 +170,6 @@ function formatWpDate(dateStr) {
     }
   } catch {}
 
-  // Fallback regex matching
   const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (match) {
     return `${match[3]}/${match[2]}/${match[1]}`;
@@ -183,9 +178,11 @@ function formatWpDate(dateStr) {
   return dateStr;
 }
 
-// Normalize title for fuzzy duplicate detection
+// Normalize string for fuzzy title matching
 function normalizeString(str = '') {
-  return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return decodeHtmlEntities(str)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
 }
 
 // Extract XML tag value handling both CDATA and plain text
@@ -223,7 +220,7 @@ function parseWordPressXml(xmlContent) {
   const itemBlocks = xmlContent.split(/<item>/i).slice(1).map((b) => b.split(/<\/item>/i)[0]);
   console.log(`📦 Found ${itemBlocks.length} total raw items in export.`);
 
-  // 1. First pass: build attachment mapping for featured images
+  // 1. Build attachment mapping for featured images
   const attachmentMap = new Map();
   for (const block of itemBlocks) {
     const postType = extractTagValue(block, 'wp:post_type');
@@ -237,7 +234,7 @@ function parseWordPressXml(xmlContent) {
   }
   console.log(`🖼️  Mapped ${attachmentMap.size} media attachments for featured cover images.`);
 
-  // 2. Second pass: extract valid blog articles
+  // 2. Extract valid blog articles
   const articles = [];
   for (const block of itemBlocks) {
     const postType = extractTagValue(block, 'wp:post_type');
@@ -268,7 +265,6 @@ function parseWordPressXml(xmlContent) {
     
     let rawExcerpt = extractTagValue(block, 'excerpt:encoded');
     if (!rawExcerpt) {
-      // Generate excerpt from first sentence of content
       const textOnly = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
       const firstSentence = textOnly.split(/[.?!]\s/)[0];
       rawExcerpt = firstSentence ? `${firstSentence.slice(0, 180)}...` : '';
@@ -364,6 +360,41 @@ function parseWordPressXml(xmlContent) {
   return articles;
 }
 
+// Fetch live blogs directly from the website over HTTPS
+function fetchLiveWebsiteBlogs(baseUrl = 'https://themindupgrade.in') {
+  return new Promise((resolve) => {
+    try {
+      const url = `${baseUrl.replace(/\/+$/, '')}/api/blogs?includeDrafts=true`;
+      const isHttps = url.startsWith('https:');
+      const lib = isHttps ? https : http;
+
+      const req = lib.get(url, { timeout: 8000 }, (res) => {
+        let body = '';
+        res.on('data', (c) => (body += c));
+        res.on('end', () => {
+          try {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              const list = JSON.parse(body);
+              if (Array.isArray(list)) {
+                return resolve(list);
+              }
+            }
+          } catch {}
+          resolve([]);
+        });
+      });
+
+      req.on('error', () => resolve([]));
+      req.on('timeout', () => {
+        req.destroy();
+        resolve([]);
+      });
+    } catch {
+      resolve([]);
+    }
+  });
+}
+
 // Load existing blogs from local JSON file
 function loadLocalBlogs() {
   const localPath = path.join(process.cwd(), 'src/data/blogs.json');
@@ -400,9 +431,67 @@ async function loadDynamoDbBlogs() {
     const scanRes = await docClient.send(new ScanCommand({ TableName: tableName }));
     return scanRes.Items || [];
   } catch (err) {
-    console.warn('⚠️  Could not scan DynamoDB directly (will rely on local JSON and API):', err.message);
     return [];
   }
+}
+
+// Find if an article already exists in the database (Title, Slug, ID)
+function findExistingMatch(article, existingBlogs) {
+  const normTitle = normalizeString(article.title);
+  const wpSlug = (article.slug || '').toLowerCase().trim();
+  const wpId = String(article.id || '').trim();
+
+  // 1. Exact normalized Title match (Highest priority)
+  for (const ex of existingBlogs) {
+    const exNormTitle = normalizeString(ex.title);
+    if (normTitle && exNormTitle && normTitle === exNormTitle) {
+      return { matchedBy: 'Title (Exact match)', existingTitle: ex.title, existingSlug: ex.slug };
+    }
+  }
+
+  // 2. Fuzzy Title match (handles punctuation, substrings, or slight phrasing differences)
+  for (const ex of existingBlogs) {
+    const exNormTitle = normalizeString(ex.title);
+    if (normTitle.length > 15 && exNormTitle.length > 15) {
+      if (normTitle.includes(exNormTitle) || exNormTitle.includes(normTitle)) {
+        return { matchedBy: 'Title (Substring match)', existingTitle: ex.title, existingSlug: ex.slug };
+      }
+      // Word-overlap similarity
+      const wordsA = new Set(article.title.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2));
+      const wordsB = new Set(ex.title.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2));
+      if (wordsA.size > 0 && wordsB.size > 0) {
+        let common = 0;
+        for (const w of wordsA) {
+          if (wordsB.has(w)) common++;
+        }
+        const sim = common / Math.max(wordsA.size, wordsB.size);
+        if (sim >= 0.7) {
+          return { matchedBy: `Title (Similarity ${Math.round(sim * 100)}%)`, existingTitle: ex.title, existingSlug: ex.slug };
+        }
+      }
+    }
+  }
+
+  // 3. Slug match
+  if (wpSlug) {
+    for (const ex of existingBlogs) {
+      const exSlug = (ex.slug || '').toLowerCase().trim();
+      if (exSlug === wpSlug) {
+        return { matchedBy: 'Slug match', existingTitle: ex.title, existingSlug: ex.slug };
+      }
+    }
+  }
+
+  // 4. ID match
+  if (wpId) {
+    for (const ex of existingBlogs) {
+      if (String(ex.id).trim() === wpId) {
+        return { matchedBy: 'ID match', existingTitle: ex.title, existingSlug: ex.slug };
+      }
+    }
+  }
+
+  return null;
 }
 
 // Save blog to DynamoDB
@@ -506,7 +595,6 @@ async function runMigration() {
 
   let xmlFilePath = fileArg;
   if (!xmlFilePath) {
-    // Check common locations
     const candidates = [
       path.join(process.cwd(), 'wordpress-export.xml'),
       path.join(process.cwd(), 'export.xml'),
@@ -524,8 +612,8 @@ async function runMigration() {
     console.log(`  --include-drafts   Also migrate unpublished drafts`);
     console.log(`  --force            Overwrite existing articles rather than skipping\n`);
     console.log(`Example:`);
-    console.log(`  node scripts/migrate-wordpress-xml.js ./my-wordpress-export.xml --dry-run`);
-    console.log(`  node scripts/migrate-wordpress-xml.js ./my-wordpress-export.xml\n`);
+    console.log(`  node scripts/migrate-wordpress-xml.js ./wordpress-export.xml --dry-run`);
+    console.log(`  node scripts/migrate-wordpress-xml.js ./wordpress-export.xml\n`);
     process.exit(1);
   }
 
@@ -540,28 +628,25 @@ async function runMigration() {
 
   console.log(`📋 Total valid WordPress articles ready for evaluation: ${targetArticles.length}`);
 
-  // Load existing articles to check duplicates
-  console.log(`🔍 Querying existing articles in database to prevent duplicates...`);
+  // Query existing articles from: 1) Live website API, 2) DynamoDB, 3) Local JSON
+  console.log(`🔍 Querying existing articles in database to check duplicates by title...`);
+  
+  const liveBlogs = await fetchLiveWebsiteBlogs('https://themindupgrade.in');
   const localBlogs = loadLocalBlogs();
   let dbBlogs = [];
   try {
     dbBlogs = await loadDynamoDbBlogs();
   } catch {}
 
-  // Combine known existing records
-  const allExisting = [...localBlogs];
-  for (const dbb of dbBlogs) {
-    if (!allExisting.some((b) => b.id === dbb.id || b.slug === dbb.slug)) {
-      allExisting.push(dbb);
+  // Merge all existing articles (deduplicated by ID and slug)
+  const allExisting = [...liveBlogs];
+  for (const b of [...dbBlogs, ...localBlogs]) {
+    if (!allExisting.some((ex) => ex.id === b.id || ex.slug === b.slug)) {
+      allExisting.push(b);
     }
   }
 
-  console.log(`📊 Found ${allExisting.length} existing articles in current system (DynamoDB & local).`);
-
-  // Build duplicate lookup indexes
-  const existingSlugs = new Set(allExisting.map((b) => (b.slug || '').toLowerCase().trim()).filter(Boolean));
-  const existingTitles = new Set(allExisting.map((b) => normalizeString(b.title)).filter(Boolean));
-  const existingIds = new Set(allExisting.map((b) => String(b.id || '').trim()).filter(Boolean));
+  console.log(`📊 Found ${allExisting.length} existing articles in current system (${liveBlogs.length} from live website, ${allExisting.length - liveBlogs.length} additional local).`);
 
   let skippedCount = 0;
   let insertedCount = 0;
@@ -570,18 +655,11 @@ async function runMigration() {
   const toInsert = [];
 
   for (const article of targetArticles) {
-    const slugKey = (article.slug || '').toLowerCase().trim();
-    const titleKey = normalizeString(article.title);
-    const idKey = String(article.id).trim();
+    const match = !isForce ? findExistingMatch(article, allExisting) : null;
 
-    const isDuplicate = !isForce && (
-      existingSlugs.has(slugKey) ||
-      existingTitles.has(titleKey) ||
-      existingIds.has(idKey)
-    );
-
-    if (isDuplicate) {
-      console.log(`⏭️  [SKIPPED - ALREADY EXISTS] "${article.title}" (slug: /${article.slug})`);
+    if (match) {
+      console.log(`⏭️  [SKIPPED - ALREADY EXISTS] "${article.title}"`);
+      console.log(`    ↳ Matched by ${match.matchedBy}: "${match.existingTitle}"`);
       skippedCount++;
     } else {
       console.log(`✨ [NEW ARTICLE READY] "${article.title}" (slug: /${article.slug}, date: ${article.publishedAt}, cat: ${article.category})`);
@@ -592,7 +670,7 @@ async function runMigration() {
   console.log(`\n----------------------------------------------------------------`);
   console.log(`📈 EVALUATION SUMMARY:`);
   console.log(`   • Total parsed articles:  ${targetArticles.length}`);
-  console.log(`   • Already in database:    ${skippedCount} (Ignored)`);
+  console.log(`   • Already in database:    ${skippedCount} (Ignored by Title / Slug)`);
   console.log(`   • New articles to insert: ${toInsert.length}`);
   console.log(`----------------------------------------------------------------\n`);
 
@@ -625,7 +703,7 @@ async function runMigration() {
         try {
           dynamoOk = await saveBlogToDynamoDb(post);
         } catch (e) {
-          console.warn(`   ⚠️ DynamoDB Put warning: ${e.message}`);
+          console.warn(`   ⚠️ DynamoDB Put notice: ${e.message}`);
         }
 
         // Always update local blogs.json so local repository stays synchronized
@@ -642,15 +720,12 @@ async function runMigration() {
         if (dynamoOk) {
           console.log(`   ✅ Saved to DynamoDB and local blogs.json`);
         } else {
-          console.log(`   ✅ Saved to local blogs.json (DynamoDB bypassed or unconfigured)`);
+          console.log(`   ✅ Saved to local blogs.json`);
         }
       }
 
-      // Add to local duplicate indexes to prevent intra-file duplicates
-      existingSlugs.add(post.slug);
-      existingTitles.add(normalizeString(post.title));
-      existingIds.add(String(post.id));
-
+      // Add to running existing set to prevent duplicates within the same run
+      allExisting.push(post);
       insertedCount++;
     } catch (err) {
       console.error(`   ❌ Failed to insert "${post.title}":`, err.message);
