@@ -238,18 +238,6 @@ export function BlogPostClientView({
     });
   }, [post?.content]);
 
-  // Clean content by removing legacy embedded Like & Subscribe texts or WordPress gifs
-  const cleanContent = useMemo(() => {
-    if (!post?.content) return '';
-    return post.content
-      .replace(/<p[^>]*>\s*<strong[^>]*>\s*<em[^>]*>\s*If you found this article valuable[\s\S]*?<\/em>\s*<\/strong>\s*<\/p>/gi, '')
-      .replace(/<p[^>]*>\s*If you found this article valuable[\s\S]*?<\/p>/gi, '')
-      .replace(/<figure[^>]*>\s*<img[^>]*output-onlinegiftools\.gif[^>]*>\s*<\/figure>/gi, '')
-      .replace(/<figure[^>]*>\s*<img[^>]*like\.gif[^>]*>\s*<\/figure>/gi, '')
-      .replace(/<img[^>]*output-onlinegiftools\.gif[^>]*\/?>/gi, '')
-      .replace(/<img[^>]*like\.gif[^>]*\/?>/gi, '');
-  }, [post?.content]);
-
   // Like handler
   const handleLike = async () => {
     if (!post) return;
@@ -737,7 +725,7 @@ export function BlogPostClientView({
             {/* Rich Content Area */}
             <div
               className="prose-editorial"
-              dangerouslySetInnerHTML={{ __html: cleanContent }}
+              dangerouslySetInnerHTML={{ __html: post.content }}
             />
 
             {/* End-of-Article Like & Subscribe Call to Action Banner */}
