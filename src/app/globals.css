@@ -453,11 +453,83 @@
   color: #E5A64B;
 }
 
-.prose-editorial img {
+.prose-editorial img,
+.prose-editorial figure img,
+.ProseMirror img {
   border-radius: 0.75rem;
-  margin: 2rem 0;
   max-width: 100%;
+  height: auto;
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.15);
+}
+
+.prose-editorial img.align-center,
+.prose-editorial figure.align-center,
+.ProseMirror img.align-center {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  clear: both;
+}
+
+.prose-editorial img.align-left,
+.prose-editorial figure.align-left,
+.ProseMirror img.align-left {
+  display: block !important;
+  margin-right: auto !important;
+  margin-left: 0 !important;
+  clear: both;
+}
+
+.prose-editorial img.align-right,
+.prose-editorial figure.align-right,
+.ProseMirror img.align-right {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  clear: both;
+}
+
+.prose-editorial img.align-float-left,
+.prose-editorial figure.align-float-left,
+.ProseMirror img.align-float-left {
+  float: left !important;
+  margin: 0.5rem 1.5rem 1rem 0 !important;
+  clear: none;
+}
+
+.prose-editorial img.align-float-right,
+.prose-editorial figure.align-float-right,
+.ProseMirror img.align-float-right {
+  float: right !important;
+  margin: 0.5rem 0 1rem 1.5rem !important;
+  clear: none;
+}
+
+/* On small smartphone screens, collapse floats so text doesn't squeeze */
+@media (max-width: 640px) {
+  .prose-editorial img.align-float-left,
+  .prose-editorial figure.align-float-left,
+  .prose-editorial img.align-float-right,
+  .prose-editorial figure.align-float-right {
+    float: none !important;
+    width: 100% !important;
+    margin: 1.5rem auto !important;
+  }
+}
+
+/* Ensure headings, blockquotes, and dividers clear floated images */
+.prose-editorial h1,
+.prose-editorial h2,
+.prose-editorial h3,
+.prose-editorial h4,
+.prose-editorial hr {
+  clear: both;
+}
+
+.prose-editorial::after {
+  content: "";
+  display: table;
+  clear: both;
 }
 
 .prose-editorial figure {

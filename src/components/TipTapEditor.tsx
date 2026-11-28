@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import LinkExtension from '@tiptap/extension-link';
-import ImageExtension from '@tiptap/extension-image';
+import { ResizableImage } from './ResizableImageExtension';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
@@ -46,6 +46,7 @@ import {
   Sliders,
   Type,
   Check,
+  WrapText,
 } from 'lucide-react';
 
 // Custom TipTap Callout Node for editorial Tip, Warning, and Key Insight cards
@@ -458,9 +459,7 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
       LinkExtension.configure({
         openOnClick: false,
       }),
-      ImageExtension.configure({
-        inline: true,
-      }),
+      ResizableImage,
       TextAlign.configure({
         types: ['heading', 'paragraph'],
       }),
@@ -1517,11 +1516,119 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
         <button
           type="button"
           onClick={() => setShowImageModal(true)}
-          className="p-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-navy-800 transition-colors cursor-pointer"
-          title="Insert Image"
+          className={`p-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+            editor.isActive('image')
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-navy-800'
+          }`}
+          title="Insert or Manage Image"
         >
           <ImageIcon className="w-4 h-4" />
         </button>
+
+        {/* Contextual Image Move & Resize Strip in Toolbar when image is selected */}
+        {editor.isActive('image') && (
+          <div className="flex items-center gap-1 bg-indigo-50 dark:bg-navy-900 border border-indigo-200 dark:border-indigo-800/80 rounded-xl px-2 py-1 animate-fade-in shadow-xs">
+            <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider mr-0.5">
+              Image:
+            </span>
+
+            {/* Alignments */}
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().updateAttributes('image', { alignment: 'left' }).run()}
+              className={`p-1 rounded-md text-xs transition-colors cursor-pointer ${
+                editor.getAttributes('image').alignment === 'left'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-navy-800'
+              }`}
+              title="Align Left"
+            >
+              <AlignLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().updateAttributes('image', { alignment: 'center' }).run()}
+              className={`p-1 rounded-md text-xs transition-colors cursor-pointer ${
+                editor.getAttributes('image').alignment === 'center'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-navy-800'
+              }`}
+              title="Align Center"
+            >
+              <AlignCenter className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().updateAttributes('image', { alignment: 'right' }).run()}
+              className={`p-1 rounded-md text-xs transition-colors cursor-pointer ${
+                editor.getAttributes('image').alignment === 'right'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-navy-800'
+              }`}
+              title="Align Right"
+            >
+              <AlignRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().updateAttributes('image', { alignment: 'float-left' }).run()}
+              className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-0.5 transition-colors cursor-pointer ${
+                editor.getAttributes('image').alignment === 'float-left'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-navy-800'
+              }`}
+              title="Wrap Left (Float Left - text wraps on right)"
+            >
+              <WrapText className="w-3 h-3" />
+              <span>Wrap L</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().updateAttributes('image', { alignment: 'float-right' }).run()}
+              className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-0.5 transition-colors cursor-pointer ${
+                editor.getAttributes('image').alignment === 'float-right'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-navy-800'
+              }`}
+              title="Wrap Right (Float Right - text wraps on left)"
+            >
+              <WrapText className="w-3 h-3 scale-x-[-1]" />
+              <span>Wrap R</span>
+            </button>
+
+            <div className="w-px h-3.5 bg-indigo-200 dark:bg-navy-700 mx-0.5" />
+
+            {/* Presets */}
+            {(['25%', '50%', '75%', '100%'] as const).map((sz) => (
+              <button
+                key={sz}
+                type="button"
+                onClick={() => editor.chain().focus().updateAttributes('image', { width: sz }).run()}
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
+                  editor.getAttributes('image').width === sz
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-navy-800'
+                }`}
+                title={`Set width to ${sz}`}
+              >
+                {sz}
+              </button>
+            ))}
+
+            <div className="w-px h-3.5 bg-indigo-200 dark:bg-navy-700 mx-0.5" />
+
+            {/* Delete */}
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().deleteSelection().run()}
+              className="p-1 rounded-md text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
+              title="Delete Selected Image"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         <button
           type="button"
