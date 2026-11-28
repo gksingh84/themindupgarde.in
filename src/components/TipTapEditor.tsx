@@ -636,23 +636,49 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
     if (!file || !editor) return;
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const res = ev.target?.result as string;
+          if (!res) return resolve('');
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            const maxW = 1000;
+            if (width > maxW) {
+              height = Math.round((height * maxW) / width);
+              width = maxW;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return resolve(res);
+            ctx.drawImage(img, 0, 0, width, height);
+            let out = canvas.toDataURL('image/webp', 0.8);
+            if (!out.startsWith('data:image/webp')) {
+              out = canvas.toDataURL('image/jpeg', 0.8);
+            }
+            resolve(out);
+          };
+          img.onerror = () => resolve(res);
+          img.src = res;
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
       });
-      const data = await res.json();
-      if (data.url && editor) {
-        editor.chain().focus().setImage({ src: data.url }).run();
+
+      if (dataUrl && editor) {
+        editor.chain().focus().setImage({ src: dataUrl }).run();
         setShowImageModal(false);
       }
     } catch (err) {
       console.error('Upload error:', err);
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 

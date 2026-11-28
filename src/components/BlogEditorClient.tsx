@@ -79,7 +79,7 @@ function isBackdated(dateStr?: string): boolean {
 /**
  * Resizes and compresses an image file to a lightweight data URL for instant preview and offline persistence.
  */
-function optimizeImageFile(file: File, maxWidth = 1400, quality = 0.85): Promise<string> {
+function optimizeImageFile(file: File, maxWidth = 1200, quality = 0.8): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -109,8 +109,10 @@ function optimizeImageFile(file: File, maxWidth = 1400, quality = 0.85): Promise
           }
 
           ctx.drawImage(img, 0, 0, width, height);
-          const format = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-          const dataUrl = canvas.toDataURL(format, quality);
+          let dataUrl = canvas.toDataURL('image/webp', quality);
+          if (!dataUrl.startsWith('data:image/webp')) {
+            dataUrl = canvas.toDataURL('image/jpeg', quality);
+          }
           resolve(dataUrl);
         } catch {
           resolve(result);
@@ -133,6 +135,7 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [restoredFromDraft, setRestoredFromDraft] = useState(false);
   const isLoadedRef = useRef(false);
+  const hasRestoredDraftRef = useRef(false);
 
   const draftStorageKey = isEditing && (postId || (initialPost && (initialPost.id || initialPost.slug)))
     ? `tmu_draft_edit_${postId || (initialPost && (initialPost.id || initialPost.slug))}`
@@ -184,6 +187,9 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
   };
 
   useEffect(() => {
+    if (hasRestoredDraftRef.current) return;
+    hasRestoredDraftRef.current = true;
+
     setIsAuthenticated(ClientStorage.isAdminAuthenticated());
     const lookupKey = postId || (initialPost ? initialPost.id || initialPost.slug : '');
     const custom = lookupKey ? ClientStorage.getCustomBlog(lookupKey) : null;
@@ -258,7 +264,6 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
               setLastAutosave(new Date(draft.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
             }
             setRestoredFromDraft(true);
-            showToast('Unsaved draft recovered from your last session!', 'info');
           }
         }
       }
@@ -269,7 +274,7 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
         isLoadedRef.current = true;
       }, 500);
     }
-  }, [initialPost, postId, draftStorageKey, showToast]);
+  }, [initialPost, postId, draftStorageKey]);
 
   // Auto-save draft to localStorage whenever fields change
   useEffect(() => {
@@ -415,29 +420,14 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
 
     try {
       showToast('Processing cover image...', 'info');
-      // 1. Immediately optimize image & update preview on client
-      const previewDataUrl = await optimizeImageFile(file, 1400, 0.85);
-      if (previewDataUrl) {
-        setCoverImage(previewDataUrl);
+      const optimizedDataUrl = await optimizeImageFile(file, 1200, 0.8);
+      if (optimizedDataUrl) {
+        setCoverImage(optimizedDataUrl);
         showToast('Cover image updated!', 'success');
       }
-
-      // 2. Also send to /api/upload in background
-      const formData = new FormData();
-      formData.append('file', file);
-      fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.url) {
-            setCoverImage(data.url);
-          }
-        })
-        .catch(() => {});
-    } catch {
-      showToast('Cover image updated locally!', 'success');
+    } catch (err) {
+      console.warn('Image optimization error:', err);
+      showToast('Failed to process cover image', 'error');
     } finally {
       e.target.value = '';
     }
@@ -449,28 +439,15 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
 
     try {
       showToast('Processing author photo...', 'info');
-      const previewDataUrl = await optimizeImageFile(file, 400, 0.85);
-      if (previewDataUrl) {
-        setAuthorAvatar(previewDataUrl);
+      const optimizedDataUrl = await optimizeImageFile(file, 300, 0.85);
+      if (optimizedDataUrl) {
+        setAuthorAvatar(optimizedDataUrl);
         setShowAuthorPhoto(true);
         showToast('Author photo updated!', 'success');
       }
-
-      const formData = new FormData();
-      formData.append('file', file);
-      fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.url) {
-            setAuthorAvatar(data.url);
-          }
-        })
-        .catch(() => {});
-    } catch {
-      showToast('Photo updated locally!', 'success');
+    } catch (err) {
+      console.warn('Avatar optimization error:', err);
+      showToast('Failed to process author photo', 'error');
     } finally {
       e.target.value = '';
     }

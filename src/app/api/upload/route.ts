@@ -14,7 +14,23 @@ export async function POST(request: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // 1. Attempt writing to public/uploads (local dev / persistent servers)
+    const isServerless = Boolean(
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.AWS_EXECUTION_ENV ||
+      process.env.VERCEL ||
+      process.env.NODE_ENV === 'production'
+    );
+
+    // 1. If serverless (e.g. AWS Amplify / Lambda), return Base64 Data URI
+    // Writing to container /public is not routed by CloudFront and causes 404s
+    if (isServerless) {
+      const mimeType = file.type || 'image/jpeg';
+      const base64 = buffer.toString('base64');
+      const url = `data:${mimeType};base64,${base64}`;
+      return NextResponse.json({ url, success: true });
+    }
+
+    // 2. Local development persistent server fallback
     try {
       const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
       if (!fs.existsSync(uploadsDir)) {
@@ -30,8 +46,6 @@ export async function POST(request: Request) {
       const url = `/uploads/${filename}`;
       return NextResponse.json({ url, success: true });
     } catch {
-      // 2. Fallback for AWS Amplify / serverless read-only Lambda
-      // Return Base64 Data URI so uploads never fail on read-only environments
       const mimeType = file.type || 'image/jpeg';
       const base64 = buffer.toString('base64');
       const url = `data:${mimeType};base64,${base64}`;
