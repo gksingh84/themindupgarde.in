@@ -533,6 +533,7 @@ function saveBlogViaApi(apiUrl, blog, apiKey) {
     const headers = {
       'Content-Type': 'application/json',
       'Content-Length': Buffer.byteLength(data),
+      'x-skip-notification': 'true',
     };
 
     if (apiKey) {
@@ -544,6 +545,7 @@ function saveBlogViaApi(apiUrl, blog, apiKey) {
       {
         method: 'POST',
         headers,
+        timeout: 15000,
       },
       (res) => {
         let body = '';
@@ -559,6 +561,10 @@ function saveBlogViaApi(apiUrl, blog, apiKey) {
     );
 
     req.on('error', (err) => reject(err));
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('API request timed out (15s)'));
+    });
     req.write(data);
     req.end();
   });
@@ -577,10 +583,12 @@ async function runMigration() {
   const isForce = args.includes('--force');
   const includeDrafts = args.includes('--include-drafts');
 
-  let apiTarget = '';
+  let apiTarget = 'https://themindupgrade.in/api/blogs';
   const apiArg = args.find((a) => a.startsWith('--api='));
   if (apiArg) {
     apiTarget = apiArg.split('=')[1].trim();
+  } else if (args.includes('--local-only')) {
+    apiTarget = '';
   }
 
   let apiKey = process.env.ADMIN_PASSWORD || process.env.APP_ADMIN_PASSWORD || '';
@@ -638,15 +646,18 @@ async function runMigration() {
     dbBlogs = await loadDynamoDbBlogs();
   } catch {}
 
-  // Merge all existing articles (deduplicated by ID and slug)
-  const allExisting = [...liveBlogs];
-  for (const b of [...dbBlogs, ...localBlogs]) {
-    if (!allExisting.some((ex) => ex.id === b.id || ex.slug === b.slug)) {
-      allExisting.push(b);
+  // When targeting live API, use liveBlogs as the single source of truth for duplicates.
+  // Otherwise, fallback to combining liveBlogs, DynamoDB scan, and local JSON.
+  const allExisting = apiTarget ? [...liveBlogs] : [...liveBlogs];
+  if (!apiTarget) {
+    for (const b of [...dbBlogs, ...localBlogs]) {
+      if (!allExisting.some((ex) => ex.id === b.id || ex.slug === b.slug)) {
+        allExisting.push(b);
+      }
     }
   }
 
-  console.log(`📊 Found ${allExisting.length} existing articles in current system (${liveBlogs.length} from live website, ${allExisting.length - liveBlogs.length} additional local).`);
+  console.log(`📊 Found ${allExisting.length} existing articles in current system (${liveBlogs.length} from live website).`);
 
   let skippedCount = 0;
   let insertedCount = 0;
@@ -694,11 +705,27 @@ async function runMigration() {
 
     try {
       if (apiTarget) {
-        // Mode A: REST API
-        await saveBlogViaApi(apiTarget, post, apiKey);
-        console.log(`   ✅ Successfully posted to API (${apiTarget})`);
+        // Mode A: REST API directly into live database
+        let success = false;
+        let lastErr = null;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            await saveBlogViaApi(apiTarget, post, apiKey);
+            success = true;
+            break;
+          } catch (e) {
+            lastErr = e;
+            await new Promise((r) => setTimeout(r, 500));
+          }
+        }
+
+        if (!success) {
+          throw lastErr || new Error('Failed after retries');
+        }
+
+        console.log(`   ✅ Inserted into Live Database (${apiTarget})`);
       } else {
-        // Mode B: Direct DynamoDB + Local Fallback JSON
+        // Mode B: Direct DynamoDB (if credentials configured locally)
         let dynamoOk = false;
         try {
           dynamoOk = await saveBlogToDynamoDb(post);
@@ -706,7 +733,13 @@ async function runMigration() {
           console.warn(`   ⚠️ DynamoDB Put notice: ${e.message}`);
         }
 
-        // Always update local blogs.json so local repository stays synchronized
+        if (dynamoOk) {
+          console.log(`   ✅ Saved to DynamoDB`);
+        }
+      }
+
+      // Always update local blogs.json so local repository stays synchronized
+      try {
         const localPath = path.join(process.cwd(), 'src/data/blogs.json');
         const currentBlogs = loadLocalBlogs();
         const existingIdx = currentBlogs.findIndex((b) => b.id === post.id || b.slug === post.slug);
@@ -716,17 +749,16 @@ async function runMigration() {
           currentBlogs.unshift(post);
         }
         fs.writeFileSync(localPath, JSON.stringify(currentBlogs, null, 2), 'utf-8');
-
-        if (dynamoOk) {
-          console.log(`   ✅ Saved to DynamoDB and local blogs.json`);
-        } else {
-          console.log(`   ✅ Saved to local blogs.json`);
-        }
-      }
+      } catch {}
 
       // Add to running existing set to prevent duplicates within the same run
       allExisting.push(post);
       insertedCount++;
+
+      // Small throttle to avoid rate-limiting
+      if (apiTarget) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
     } catch (err) {
       console.error(`   ❌ Failed to insert "${post.title}":`, err.message);
       errorCount++;

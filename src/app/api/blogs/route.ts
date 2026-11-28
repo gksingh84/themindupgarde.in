@@ -104,9 +104,13 @@ export async function POST(request: Request) {
       revalidatePath('/admin');
     } catch {}
 
-    // If published, trigger subscriber email notifications
+    // If published, trigger subscriber email notifications (unless skipped during migration)
+    const skipNotify =
+      new URL(request.url).searchParams.get('notify') === 'false' ||
+      request.headers.get('x-skip-notification') === 'true';
+
     let notificationResult = null;
-    if (created.status === 'published') {
+    if (created.status === 'published' && !skipNotify) {
       try {
         const notifyRes = await fetch(`${new URL(request.url).origin}/api/subscribers/notify`, {
           method: 'POST',
