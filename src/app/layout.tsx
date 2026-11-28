@@ -24,6 +24,20 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'The Mind Upgrade Team', url: 'https://themindupgrade.in' }],
   metadataBase: new URL('https://themindupgrade.in'),
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   openGraph: {
     title: 'The Mind Upgrade | Fresh Insights for a Smarter Life',
     description:
@@ -66,6 +80,37 @@ export default function RootLayout({
         <link
           href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800;900&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&display=swap"
           rel="stylesheet"
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@graph': [
+                {
+                  '@type': 'WebSite',
+                  '@id': 'https://themindupgrade.in/#website',
+                  url: 'https://themindupgrade.in',
+                  name: 'The Mind Upgrade',
+                  description:
+                    'A premium independent publishing platform exploring Personal Finance, Insurance, Psychology, Economy, and Practical Daily Wisdom.',
+                  publisher: {
+                    '@id': 'https://themindupgrade.in/#organization',
+                  },
+                },
+                {
+                  '@type': 'Organization',
+                  '@id': 'https://themindupgrade.in/#organization',
+                  name: 'The Mind Upgrade',
+                  url: 'https://themindupgrade.in',
+                  logo: {
+                    '@type': 'ImageObject',
+                    url: 'https://themindupgrade.in/logo.png',
+                  },
+                },
+              ],
+            }),
+          }}
         />
       </head>
       <body

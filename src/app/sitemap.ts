@@ -1,9 +1,12 @@
 import { MetadataRoute } from 'next';
-import { getBlogsServer } from '@/lib/blog-service';
+import { getBlogsServerAsync } from '@/lib/blog-service';
 import { CATEGORIES } from '@/data/categories';
 import { parseDate } from '@/lib/date-utils';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const dynamic = 'force-dynamic';
+export const revalidate = 3600; // Revalidate sitemap every hour
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://themindupgrade.in';
 
   const staticPages: MetadataRoute.Sitemap = [
@@ -28,11 +31,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }));
 
-  const blogs = getBlogsServer().filter((b) => b.status === 'published');
+  const allBlogs = await getBlogsServerAsync(true);
+  const blogs = allBlogs.filter((b) => b.status === 'published');
   const blogPages: MetadataRoute.Sitemap = blogs.map((post) => ({
     url: `${baseUrl}/blog/${post.slug}`,
     lastModified: parseDate(post.publishedAt),
-    changeFrequency: 'monthly',
+    changeFrequency: 'weekly',
     priority: 0.9,
   }));
 

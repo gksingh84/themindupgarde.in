@@ -22,6 +22,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: `${post.title} | The Mind Upgrade`,
     description: post.excerpt,
+    alternates: {
+      canonical: `https://themindupgrade.in/blog/${post.slug}`,
+    },
     openGraph: {
       title: post.title,
       description: post.excerpt,
@@ -63,11 +66,48 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     }
   }
 
+  const jsonLd = post
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: post.title,
+        description: post.excerpt,
+        image: post.coverImage && post.coverImage.startsWith('/')
+          ? `https://themindupgrade.in${post.coverImage}`
+          : post.coverImage,
+        datePublished: post.publishedAt,
+        author: {
+          '@type': 'Person',
+          name: post.author?.name || 'Gaurav Kumar Singh',
+        },
+        publisher: {
+          '@type': 'Organization',
+          name: 'The Mind Upgrade',
+          logo: {
+            '@type': 'ImageObject',
+            url: 'https://themindupgrade.in/logo.png',
+          },
+        },
+        mainEntityOfPage: {
+          '@type': 'WebPage',
+          '@id': `https://themindupgrade.in/blog/${post.slug}`,
+        },
+      }
+    : null;
+
   return (
-    <BlogPostClientView
-      post={post}
-      slug={slug}
-      relatedPosts={relatedPosts}
-    />
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      <BlogPostClientView
+        post={post}
+        slug={slug}
+        relatedPosts={relatedPosts}
+      />
+    </>
   );
 }
