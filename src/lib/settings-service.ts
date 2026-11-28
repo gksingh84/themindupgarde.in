@@ -30,6 +30,13 @@ export function saveWebsiteSettings(settings: Partial<WebsiteSettings>): Website
       ...current.socialLinks,
       ...(settings.socialLinks || {}),
     },
+    articleFooterCta: {
+      enabled: true,
+      text: "If you found this article valuable, please don't forget to Like and Subscribe to my blog for more expert insights and updates.",
+      imageUrl: '/images/like-subscribe-banner.png',
+      ...(current.articleFooterCta || {}),
+      ...(settings.articleFooterCta || {}),
+    },
     seo: {
       ...current.seo,
       ...(settings.seo || {}),

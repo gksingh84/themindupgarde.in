@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { BlogPost, Comment } from '@/types/blog';
 import { ClientStorage } from '@/lib/client-storage';
@@ -121,8 +121,38 @@ export function BlogPostClientView({
 
   // Newsletter in post
   const [inlineEmail, setInlineEmail] = useState('');
+  const [isSubscribingInline, setIsSubscribingInline] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { showToast } = useToast();
+
+  const handleInlineSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inlineEmail || !inlineEmail.includes('@')) {
+      showToast('Please enter a valid email address.', 'error');
+      return;
+    }
+
+    setIsSubscribingInline(true);
+    try {
+      const res = await fetch('/api/subscribers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inlineEmail.trim(), source: `blog_footer_${post?.slug || 'article'}` }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Thank you for subscribing to The Mind Upgrade!', 'success');
+        setInlineEmail('');
+      } else {
+        showToast(data.message || 'Already subscribed or invalid email.', 'info');
+      }
+    } catch {
+      showToast('Thank you for subscribing to The Mind Upgrade!', 'success');
+      setInlineEmail('');
+    } finally {
+      setIsSubscribingInline(false);
+    }
+  };
 
   // Scroll Progress and Back-to-Top
   useEffect(() => {
@@ -206,6 +236,18 @@ export function BlogPostClientView({
     headingElements.forEach((heading, idx) => {
       heading.id = `section-${idx}`;
     });
+  }, [post?.content]);
+
+  // Clean content by removing legacy embedded Like & Subscribe texts or WordPress gifs
+  const cleanContent = useMemo(() => {
+    if (!post?.content) return '';
+    return post.content
+      .replace(/<p[^>]*>\s*<strong[^>]*>\s*<em[^>]*>\s*If you found this article valuable[\s\S]*?<\/em>\s*<\/strong>\s*<\/p>/gi, '')
+      .replace(/<p[^>]*>\s*If you found this article valuable[\s\S]*?<\/p>/gi, '')
+      .replace(/<figure[^>]*>\s*<img[^>]*output-onlinegiftools\.gif[^>]*>\s*<\/figure>/gi, '')
+      .replace(/<figure[^>]*>\s*<img[^>]*like\.gif[^>]*>\s*<\/figure>/gi, '')
+      .replace(/<img[^>]*output-onlinegiftools\.gif[^>]*\/?>/gi, '')
+      .replace(/<img[^>]*like\.gif[^>]*\/?>/gi, '');
   }, [post?.content]);
 
   // Like handler
@@ -695,8 +737,73 @@ export function BlogPostClientView({
             {/* Rich Content Area */}
             <div
               className="prose-editorial"
-              dangerouslySetInnerHTML={{ __html: post.content }}
+              dangerouslySetInnerHTML={{ __html: cleanContent }}
             />
+
+            {/* End-of-Article Like & Subscribe Call to Action Banner */}
+            <div className="my-10 p-6 sm:p-8 rounded-3xl bg-linear-to-b from-amber-500/10 via-slate-50 to-white dark:from-amber-500/15 dark:via-navy-900/90 dark:to-navy-950 border border-amber-500/25 dark:border-amber-500/30 text-center shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amberBrand/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="relative z-10 max-w-xl mx-auto space-y-5">
+                <p className="font-serif italic text-base sm:text-lg text-navy-900 dark:text-offwhite font-medium leading-relaxed">
+                  &ldquo;If you found this article valuable, please don&apos;t forget to Like and Subscribe to my blog for more expert insights and updates.&rdquo;
+                </p>
+
+                {/* Banner Image */}
+                <div className="flex justify-center my-3">
+                  <button
+                    type="button"
+                    onClick={handleLike}
+                    className="group relative cursor-pointer focus:outline-hidden transition-transform duration-300 hover:scale-[1.03] active:scale-[0.99]"
+                    title="Click to appreciate this article"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/images/like-subscribe-banner.png"
+                      alt="Like and Subscribe to The Mind Upgrade"
+                      className="max-w-[320px] sm:max-w-[420px] w-full h-auto rounded-2xl shadow-md border border-slate-200/80 dark:border-navy-700/80 block"
+                    />
+                  </button>
+                </div>
+
+                {/* Interactive Inline Engagement Row */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleLike}
+                    className={`w-full sm:w-auto px-5 py-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                      hasLiked
+                        ? 'bg-rose-500 text-white border-rose-600 shadow-rose-500/20'
+                        : 'bg-white dark:bg-navy-800 text-navy-900 dark:text-slate-100 hover:text-rose-500 border-slate-200 dark:border-navy-700 hover:border-rose-400'
+                    }`}
+                  >
+                    <Heart className={`w-4 h-4 ${hasLiked ? 'fill-current' : ''}`} />
+                    <span>{hasLiked ? 'Article Appreciated!' : 'Like Article'}</span>
+                  </button>
+
+                  <form
+                    onSubmit={handleInlineSubscribe}
+                    className="w-full sm:w-auto flex items-center gap-1.5 bg-white dark:bg-navy-800 p-1 rounded-xl border border-slate-200 dark:border-navy-700 shadow-xs focus-within:border-amberBrand transition-colors"
+                  >
+                    <input
+                      type="email"
+                      value={inlineEmail}
+                      onChange={(e) => setInlineEmail(e.target.value)}
+                      placeholder="Enter your email to subscribe..."
+                      className="px-3 py-1.5 text-xs text-navy-900 dark:text-white bg-transparent focus:outline-hidden w-full sm:w-56"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isSubscribingInline}
+                      className="px-4 py-1.5 bg-amberBrand hover:bg-amber-500 text-navy-950 font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                    >
+                      {isSubscribingInline ? 'Subscribing...' : 'Subscribe'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
 
             {/* Tags Strip */}
             {post.tags && post.tags.length > 0 && (

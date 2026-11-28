@@ -123,6 +123,11 @@ export interface WebsiteSettings {
     youtube?: string;
     instagram?: string;
   };
+  articleFooterCta?: {
+    enabled: boolean;
+    text: string;
+    imageUrl: string;
+  };
   seo: {
     defaultTitle: string;
     defaultDescription: string;

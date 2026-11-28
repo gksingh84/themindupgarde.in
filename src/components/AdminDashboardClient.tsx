@@ -1367,6 +1367,58 @@ export function AdminDashboardClient({ initialBlogs }: AdminDashboardClientProps
             </div>
           </div>
 
+          {/* Article Footer Call-to-Action */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-4 shadow-sm">
+            <h3 className="font-serif text-base font-bold text-navy-800 dark:text-offwhite border-b border-slate-100 dark:border-navy-800 pb-2">
+              Article Footer Call-to-Action (Like &amp; Subscribe)
+            </h3>
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-navy-800 dark:text-offwhite">
+                <input
+                  type="checkbox"
+                  checked={settings.articleFooterCta?.enabled ?? true}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      articleFooterCta: {
+                        enabled: e.target.checked,
+                        text: settings.articleFooterCta?.text || "If you found this article valuable, please don't forget to Like and Subscribe to my blog for more expert insights and updates.",
+                        imageUrl: settings.articleFooterCta?.imageUrl || '/images/like-subscribe-banner.png',
+                      },
+                    })
+                  }
+                  className="rounded border-navy-700 text-amberBrand"
+                />
+                <span>Automatically append Like &amp; Subscribe banner at the bottom of each article</span>
+              </label>
+              <div>
+                <label className="text-[11px] font-bold text-slateBrand dark:text-slate-400 block mb-1">
+                  Closing Call-to-Action Text
+                </label>
+                <textarea
+                  rows={2}
+                  value={settings.articleFooterCta?.text || "If you found this article valuable, please don't forget to Like and Subscribe to my blog for more expert insights and updates."}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      articleFooterCta: {
+                        enabled: settings.articleFooterCta?.enabled ?? true,
+                        text: e.target.value,
+                        imageUrl: settings.articleFooterCta?.imageUrl || '/images/like-subscribe-banner.png',
+                      },
+                    })
+                  }
+                  className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-xs text-navy-800 dark:text-offwhite"
+                />
+              </div>
+              <div className="pt-1 flex items-center gap-3">
+                <span className="text-[11px] font-bold text-slateBrand dark:text-slate-400">Attached Banner:</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/like-subscribe-banner.png" alt="Banner" className="h-8 w-auto rounded-lg border border-slate-200 dark:border-navy-700 shadow-xs" />
+              </div>
+            </div>
+          </div>
+
           <div className="p-6 rounded-2xl bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 space-y-4 shadow-sm">
             <h3 className="font-serif text-base font-bold text-navy-800 dark:text-offwhite border-b border-slate-100 dark:border-navy-800 pb-2">
               Brand Identity &amp; Contact

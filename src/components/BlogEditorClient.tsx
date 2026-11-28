@@ -27,7 +27,8 @@ import {
   Clock,
   Layers,
   Search,
-  History
+  History,
+  Heart,
 } from 'lucide-react';
 
 interface BlogEditorClientProps {
@@ -782,6 +783,31 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
               Publication Body (TipTap Rich Text)
             </label>
             <TipTapEditor content={content} onChange={setContent} />
+
+            {/* Automatic Signoff Banner Notice */}
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs flex flex-col sm:flex-row items-center justify-between gap-4 text-amber-900 dark:text-amber-200 mt-2">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amberBrand/20 flex items-center justify-center shrink-0">
+                  <Heart className="w-4 h-4 text-amberBrand fill-current" />
+                </div>
+                <div>
+                  <p className="font-bold text-navy-900 dark:text-offwhite text-xs">
+                    Automatic End-of-Article Engagement Footer Attached
+                  </p>
+                  <p className="opacity-90 mt-0.5 text-[11px] leading-relaxed">
+                    The &ldquo;Like and Subscribe&rdquo; banner and closing prompt (&ldquo;If you found this article valuable, please don&apos;t forget to Like and Subscribe...&rdquo;) will automatically appear at the bottom of this article on the live website. You do not need to paste or add them into the body text.
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 hidden md:block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/like-subscribe-banner.png"
+                  alt="Banner preview"
+                  className="h-7 w-auto rounded-lg shadow-xs opacity-90 border border-amber-500/30"
+                />
+              </div>
+            </div>
           </div>
 
           {/* SEO Meta Box */}
