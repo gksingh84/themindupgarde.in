@@ -309,7 +309,7 @@ export async function getAllBlogsFromDynamoDB(): Promise<BlogPost[] | null> {
 
         return {
           ...b,
-          content: '', // Omit heavy content from bulk listing scan to prevent AWS Lambda 6MB payload overflow (HTTP 413)
+          content: b.content || '',
           excerpt,
           coverImage,
           title: b.title || 'Untitled Article',
@@ -401,10 +401,21 @@ export async function saveBlogToDynamoDB(blog: BlogPost): Promise<boolean> {
     }
 
     const client = getDynamoDBClient();
+
+    // Guard: Never wipe out existing content if incoming blog has empty content
+    let finalContent = blog.content;
+    if (!finalContent || !finalContent.trim()) {
+      const existing = await getBlogByIdOrSlugFromDynamoDB(blog.id);
+      if (existing && existing.content && existing.content.trim()) {
+        finalContent = existing.content;
+      }
+    }
+
     const command = new PutCommand({
       TableName: getDynamoTableName(),
       Item: {
         ...blog,
+        content: finalContent || '',
         coverImage: coverImage || '/images/financial-independence.svg',
         type: 'blog',
         updatedAt: new Date().toISOString(),

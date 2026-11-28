@@ -72,9 +72,16 @@ export async function PUT(
       return NextResponse.json({ error: 'Blog not found' }, { status: 404 });
     }
 
+    const currentBlog = await getBlogBySlugServerAsync(decodedId) || blogs[index];
+    const finalContent =
+      updates.content !== undefined && updates.content.trim() !== ''
+        ? updates.content
+        : currentBlog.content || blogs[index].content || '';
+
     const updatedBlog: BlogPost = {
       ...blogs[index],
       ...updates,
+      content: finalContent,
       excerpt: updates.excerpt !== undefined ? (updates.excerpt || updates.subtitle || '') : (updates.subtitle || blogs[index].excerpt),
       publishedAt: updates.publishedAt ? formatDateDDMMYYYY(updates.publishedAt) : blogs[index].publishedAt,
     };

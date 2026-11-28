@@ -66,10 +66,13 @@ export async function getBlogsServerAsync(forceRefresh = false): Promise<BlogPos
         lastCacheTime = now;
 
         if (updated) {
-          // Asynchronously update published status in DynamoDB
-          Promise.all(processed.filter((b) => b.status === 'published').map(saveBlogToDynamoDB)).catch(
-            () => {}
+          // Asynchronously update published status in DynamoDB for newly published posts only
+          const newlyPublished = processed.filter(
+            (b) => b.status === 'published' && targetBlogs.find((orig) => orig.id === b.id)?.status === 'scheduled'
           );
+          if (newlyPublished.length > 0) {
+            Promise.all(newlyPublished.map(saveBlogToDynamoDB)).catch(() => {});
+          }
         }
 
         return processed;
