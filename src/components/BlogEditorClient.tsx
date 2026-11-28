@@ -18,6 +18,8 @@ import {
   Lock,
   Upload,
   Check,
+  CheckCircle2,
+  RefreshCw,
   User,
   Trash2,
   Eye,
@@ -79,50 +81,105 @@ function isBackdated(dateStr?: string): boolean {
 /**
  * Resizes and compresses an image file to a lightweight data URL for instant preview and offline persistence.
  */
-function optimizeImageFile(file: File, maxWidth = 1200, quality = 0.8): Promise<string> {
+function optimizeImageFile(file: File, maxWidth = 1200, quality = 0.82): Promise<string> {
+  // If SVG, read directly as data URL without canvas rasterization
+  if (file.type === 'image/svg+xml') {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read SVG file'));
+      reader.readAsDataURL(file);
+    });
+  }
+
   return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      if (!result) {
-        resolve('');
-        return;
-      }
-      const img = new Image();
-      img.onload = () => {
+    let objectUrl = '';
+    try {
+      objectUrl = URL.createObjectURL(file);
+    } catch {}
+
+    const img = new Image();
+
+    const cleanup = () => {
+      if (objectUrl) {
         try {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
+          URL.revokeObjectURL(objectUrl);
+        } catch {}
+      }
+    };
 
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
+    const fallbackReader = () => {
+      cleanup();
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve((reader.result as string) || '');
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    };
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve(result);
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+
+        if (!width || !height) {
+          fallbackReader();
+          return;
+        }
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          fallbackReader();
+          return;
+        }
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+
+        cleanup();
+
+        // 1. Try WebP first
+        try {
+          const webp = canvas.toDataURL('image/webp', quality);
+          if (webp && webp.startsWith('data:image/webp')) {
+            resolve(webp);
             return;
           }
+        } catch {}
 
-          ctx.drawImage(img, 0, 0, width, height);
-          let dataUrl = canvas.toDataURL('image/webp', quality);
-          if (!dataUrl.startsWith('data:image/webp')) {
-            dataUrl = canvas.toDataURL('image/jpeg', quality);
-          }
-          resolve(dataUrl);
+        // 2. Try JPEG or PNG fallback
+        try {
+          const isPng = file.type === 'image/png';
+          const format = isPng ? 'image/png' : 'image/jpeg';
+          const fallbackData = canvas.toDataURL(format, quality);
+          resolve(fallbackData);
         } catch {
-          resolve(result);
+          fallbackReader();
         }
-      };
-      img.onerror = () => resolve(result);
-      img.src = result;
+      } catch {
+        fallbackReader();
+      }
     };
-    reader.onerror = () => resolve('');
-    reader.readAsDataURL(file);
+
+    img.onerror = () => {
+      fallbackReader();
+    };
+
+    if (objectUrl) {
+      img.src = objectUrl;
+    } else {
+      fallbackReader();
+    }
   });
 }
 
@@ -131,6 +188,10 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
   const { showToast } = useToast();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const coverFileInputRef = useRef<HTMLInputElement>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const [lastAutosave, setLastAutosave] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [restoredFromDraft, setRestoredFromDraft] = useState(false);
@@ -414,22 +475,34 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
     }
   }, [title, isEditing]);
 
-  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const processCoverFile = async (file: File) => {
     if (!file) return;
+    setCoverUploading(true);
+    showToast('Optimizing cover image...', 'info');
 
     try {
-      showToast('Processing cover image...', 'info');
-      const optimizedDataUrl = await optimizeImageFile(file, 1200, 0.8);
+      const optimizedDataUrl = await optimizeImageFile(file, 1200, 0.82);
       if (optimizedDataUrl) {
         setCoverImage(optimizedDataUrl);
-        showToast('Cover image updated!', 'success');
+        showToast('Cover image updated successfully!', 'success');
+      } else {
+        showToast('Could not optimize image. Please try another file.', 'error');
       }
     } catch (err) {
-      console.warn('Image optimization error:', err);
-      showToast('Failed to process cover image', 'error');
+      console.warn('Cover upload error:', err);
+      showToast('Failed to process image. Please try another image.', 'error');
     } finally {
-      e.target.value = '';
+      setCoverUploading(false);
+      if (coverFileInputRef.current) {
+        coverFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processCoverFile(file);
     }
   };
 
@@ -437,19 +510,25 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setAvatarUploading(true);
     try {
-      showToast('Processing author photo...', 'info');
+      showToast('Optimizing author photo...', 'info');
       const optimizedDataUrl = await optimizeImageFile(file, 300, 0.85);
       if (optimizedDataUrl) {
         setAuthorAvatar(optimizedDataUrl);
         setShowAuthorPhoto(true);
         showToast('Author photo updated!', 'success');
+      } else {
+        showToast('Could not optimize photo. Please try another file.', 'error');
       }
     } catch (err) {
       console.warn('Avatar optimization error:', err);
       showToast('Failed to process author photo', 'error');
     } finally {
-      e.target.value = '';
+      setAvatarUploading(false);
+      if (avatarFileInputRef.current) {
+        avatarFileInputRef.current.value = '';
+      }
     }
   };
 
@@ -986,8 +1065,20 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
             </div>
 
             <div className="space-y-3">
-              {/* Preview */}
-              <div className="relative h-40 rounded-xl overflow-hidden bg-slate-100 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 group">
+              {/* Preview with Drag & Drop */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) processCoverFile(file);
+                }}
+                className="relative h-44 rounded-xl overflow-hidden bg-slate-100 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 group"
+              >
                 <img
                   src={coverImage}
                   alt="Cover preview"
@@ -996,24 +1087,63 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
                     (e.target as HTMLImageElement).src = '/images/financial-independence.svg';
                   }}
                 />
-                <div className="absolute inset-0 bg-navy-950/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <span className="px-2.5 py-1 rounded-md bg-navy-900/80 text-white text-[11px] font-medium backdrop-blur-xs">
-                    Current Cover
-                  </span>
-                </div>
+                {coverUploading ? (
+                  <div className="absolute inset-0 bg-navy-950/80 flex flex-col items-center justify-center gap-2 text-amberBrand">
+                    <RefreshCw className="w-6 h-6 animate-spin text-amberBrand" />
+                    <span className="text-xs font-bold">Optimizing Image...</span>
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 bg-navy-950/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="px-2.5 py-1 rounded-md bg-navy-900/80 text-white text-[11px] font-medium backdrop-blur-xs">
+                      Drag &amp; drop image here or use button below
+                    </span>
+                  </div>
+                )}
               </div>
 
+              {/* Status info */}
+              {coverImage.startsWith('data:') && (
+                <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    Custom image ready to save
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCoverImage('/images/financial-independence.svg')}
+                    className="text-[11px] text-slate-400 hover:text-rose-400 underline transition-colors cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                </div>
+              )}
+
               {/* Upload Button */}
-              <label className="flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 border-dashed border-amberBrand/50 hover:border-amberBrand bg-amberBrand/5 hover:bg-amberBrand/10 text-xs font-bold text-navy-800 dark:text-amberBrand transition-colors cursor-pointer shadow-xs">
-                <Upload className="w-4 h-4 text-amberBrand" />
-                <span>Upload Image from Device</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCoverUpload}
-                  className="hidden"
-                />
-              </label>
+              <button
+                type="button"
+                onClick={() => coverFileInputRef.current?.click()}
+                disabled={coverUploading}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-amberBrand/50 hover:border-amberBrand bg-amberBrand/5 hover:bg-amberBrand/10 text-xs font-bold text-navy-800 dark:text-amberBrand transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                {coverUploading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 text-amberBrand animate-spin" />
+                    <span>Processing Image...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 text-amberBrand" />
+                    <span>Upload Image from Device</span>
+                  </>
+                )}
+              </button>
+              <input
+                ref={coverFileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/svg+xml,image/*"
+                onChange={handleCoverUpload}
+                className="hidden"
+              />
 
               {/* Direct Image URL input */}
               <div>
@@ -1127,16 +1257,31 @@ export function BlogEditorClient({ initialPost, isEditing = false, postId }: Blo
                   />
                   <span className="font-medium text-navy-800 dark:text-offwhite">Show Photo</span>
                 </label>
-                <label className="text-[11px] font-bold text-amberBrand hover:underline cursor-pointer flex items-center gap-1">
-                  <Upload className="w-3 h-3" />
-                  <span>Upload Avatar</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAuthorAvatarUpload}
-                    className="hidden"
-                  />
-                </label>
+                <button
+                  type="button"
+                  onClick={() => avatarFileInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="text-[11px] font-bold text-amberBrand hover:underline cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                >
+                  {avatarUploading ? (
+                    <>
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      <span>Optimizing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3 h-3" />
+                      <span>Upload Avatar</span>
+                    </>
+                  )}
+                </button>
+                <input
+                  ref={avatarFileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp,image/*"
+                  onChange={handleAuthorAvatarUpload}
+                  className="hidden"
+                />
               </div>
             </div>
           </div>

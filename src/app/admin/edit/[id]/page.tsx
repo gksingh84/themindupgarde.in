@@ -3,6 +3,8 @@ import { getBlogsServerAsync, getBlogsServer, getBlogBySlugServerAsync } from '@
 import { BlogEditorClient } from '@/components/BlogEditorClient';
 import { BlogPost } from '@/types/blog';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
